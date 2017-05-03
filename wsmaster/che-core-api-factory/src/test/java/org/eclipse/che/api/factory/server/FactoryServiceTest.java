@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.che.api.factory.server;
 
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -66,7 +65,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
-import javax.ws.rs.core.UriInfo;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -91,6 +89,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
@@ -137,7 +136,6 @@ public class FactoryServiceTest {
     private static final String PROJECT_SOURCE_TYPE     = "git";
     private static final String PROJECT_SOURCE_LOCATION = "https://github.com/codenvy/platform-api.git";
 
-
     private static final DtoFactory DTO = DtoFactory.getInstance();
 
     @Mock
@@ -156,8 +154,6 @@ public class FactoryServiceTest {
     private WorkspaceManager                workspaceManager;
     @Mock
     private FactoryParametersResolverHolder factoryParametersResolverHolder;
-    @Mock
-    private UriInfo                         uriInfo;
 
     private FactoryBuilder factoryBuilderSpy;
 
@@ -274,8 +270,9 @@ public class FactoryServiceTest {
     @Test
     public void shouldReturnFactoryListByNameAttribute() throws Exception {
         final Factory factory = createFactory();
-        when(factoryManager.getByAttribute(1, 0, ImmutableList.of(Pair.of("factory.name", factory.getName()))))
-                .thenReturn(ImmutableList.of(factory));
+        doReturn(singletonList(factory))
+                .when(factoryManager)
+                .getByAttribute(1, 0, singletonList(Pair.of("factory.name", factory.getName())));
 
         final Response response = given().auth()
                                          .basic(ADMIN_USER_NAME, ADMIN_USER_PASSWORD)
@@ -294,8 +291,9 @@ public class FactoryServiceTest {
     public void shouldReturnFactoryListByCreatorAttribute() throws Exception {
         final Factory factory1 = createNamedFactory("factory1");
         final Factory factory2 = createNamedFactory("factory2");
-        when(factoryManager.getByAttribute(2, 0, ImmutableList.of(Pair.of("factory.creator.name", user.getName()))))
-                .thenReturn(ImmutableList.of(factory1, factory2));
+        doReturn(ImmutableList.of(factory1, factory2))
+                .when(factoryManager)
+                .getByAttribute(2, 0, singletonList(Pair.of("factory.creator.name", user.getName())));
 
         final Response response = given().auth()
                                          .basic(ADMIN_USER_NAME, ADMIN_USER_PASSWORD)
@@ -645,6 +643,8 @@ public class FactoryServiceTest {
     }
 
     private static <T> List<T> unwrapDtoList(Response response, Class<T> dtoClass) {
-        return FluentIterable.from(DtoFactory.getInstance().createListDtoFromJson(response.body().print(), dtoClass)).toList();
+        return DtoFactory.getInstance().createListDtoFromJson(response.body().print(), dtoClass)
+                         .stream()
+                         .collect(toList());
     }
 }

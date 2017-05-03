@@ -142,10 +142,9 @@ public class FactoryManager {
      * @throws ServerException
      *         when any server errors occurs
      */
-    @SuppressWarnings("unchecked")
-    public <T extends List<? extends Factory>> T getByAttribute(int maxItems,
-                                                                int skipCount,
-                                                                List<Pair<String, String>> attributes) throws ServerException {
-        return (T)factoryDao.getByAttribute(maxItems, skipCount, attributes);
+    public List<? extends Factory> getByAttribute(int maxItems,
+                                                  int skipCount,
+                                                  List<Pair<String, String>> attributes) throws ServerException {
+        return factoryDao.getByAttribute(maxItems, skipCount, attributes);
     }
 }
