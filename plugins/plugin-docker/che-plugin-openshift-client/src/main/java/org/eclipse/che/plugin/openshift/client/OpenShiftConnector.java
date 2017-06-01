@@ -59,6 +59,7 @@ import org.eclipse.che.plugin.docker.client.json.ContainerConfig;
 import org.eclipse.che.plugin.docker.client.json.ContainerCreated;
 import org.eclipse.che.plugin.docker.client.json.ContainerInfo;
 import org.eclipse.che.plugin.docker.client.json.ContainerListEntry;
+import org.eclipse.che.plugin.docker.client.json.ContainerState;
 import org.eclipse.che.plugin.docker.client.json.Event;
 import org.eclipse.che.plugin.docker.client.json.Filters;
 import org.eclipse.che.plugin.docker.client.json.HostConfig;
@@ -1342,9 +1343,17 @@ public class OpenShiftConnector extends DockerConnector {
         info.setNetworkSettings(networkSettings);
         info.setHostConfig(hostConfig);
         info.setImage(imageInfo.getConfig().getImage());
+
+        quickFixSetContainerRunningStatus(info);
+
         return info;
     }
 
+    private void quickFixSetContainerRunningStatus(ContainerInfo info) {
+        ContainerState containerState = new ContainerState();
+        containerState.setStatus("running");
+        info.setState(containerState);
+    }
 
     private void cleanUpWorkspaceResources(String deploymentName) throws IOException {
 
