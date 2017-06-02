@@ -16,7 +16,6 @@ import com.google.inject.Singleton;
 import org.eclipse.che.api.promises.client.Function;
 import org.eclipse.che.api.promises.client.Promise;
 import org.eclipse.che.api.workspace.shared.dto.CommandDto;
-import org.eclipse.che.api.workspace.shared.dto.WorkspaceDto;
 import org.eclipse.che.ide.api.app.AppContext;
 import org.eclipse.che.ide.api.command.CommandImpl;
 import org.eclipse.che.ide.api.command.CommandManager;
@@ -67,7 +66,7 @@ class WorkspaceCommandManagerDelegate {
                                                 .withAttributes(command.getAttributes());
 
         return workspaceServiceClient.addCommand(appContext.getWorkspaceId(), commandDto)
-                                     .then((Function<WorkspaceDto, CommandImpl>)workspace -> {
+                                     .then((Function<WorkspaceImpl, CommandImpl>)workspace -> {
                                          ((AppContextImpl)appContext).setWorkspace(workspace);
                                          return command;
                                      });
@@ -86,7 +85,7 @@ class WorkspaceCommandManagerDelegate {
                                                 .withAttributes(command.getAttributes());
 
         return workspaceServiceClient.updateCommand(appContext.getWorkspaceId(), command.getName(), commandDto)
-                                     .then((Function<WorkspaceDto, CommandImpl>)workspace -> {
+                                     .then((Function<WorkspaceImpl, CommandImpl>)workspace -> {
                                          ((AppContextImpl)appContext).setWorkspace(workspace);
                                          return command;
                                      });
@@ -95,7 +94,7 @@ class WorkspaceCommandManagerDelegate {
     /** Removes the command with the specified {@code commandName}. */
     Promise<Void> removeCommand(String commandName) {
         return workspaceServiceClient.deleteCommand(appContext.getWorkspaceId(), commandName)
-                                     .then((Function<WorkspaceDto, Void>)workspace -> {
+                                     .then((Function<WorkspaceImpl, Void>)workspace -> {
                                          ((AppContextImpl)appContext).setWorkspace(workspace);
                                          return null;
                                      });

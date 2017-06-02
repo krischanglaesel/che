@@ -19,6 +19,7 @@ import org.eclipse.che.api.core.model.workspace.Workspace;
  *
  * @author Vitaliy Guliy
  */
+@Deprecated
 public class WorkspaceStartingEvent extends GwtEvent<WorkspaceStartingEvent.Handler> {
 
     /**

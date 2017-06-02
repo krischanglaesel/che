@@ -18,8 +18,8 @@ import org.eclipse.che.api.project.shared.dto.ProjectTypeDto;
 import org.eclipse.che.api.promises.client.Promise;
 import org.eclipse.che.commons.annotation.Nullable;
 import org.eclipse.che.ide.api.app.AppContext;
-import org.eclipse.che.ide.api.machine.events.WsAgentStateEvent;
-import org.eclipse.che.ide.api.machine.events.WsAgentStateHandler;
+import org.eclipse.che.ide.api.machine.WsAgentServerRunningEvent;
+import org.eclipse.che.ide.api.machine.WsAgentServerStoppedEvent;
 import org.eclipse.che.ide.api.project.type.ProjectTypeRegistry;
 import org.eclipse.che.ide.rest.AsyncRequestFactory;
 import org.eclipse.che.ide.rest.DtoUnmarshallerFactory;
@@ -53,16 +53,8 @@ public class ProjectTypeRegistryImpl implements ProjectTypeRegistry {
 
         projectTypes = new HashMap<>();
 
-        eventBus.addHandler(WsAgentStateEvent.TYPE, new WsAgentStateHandler() {
-            @Override
-            public void onWsAgentStarted(WsAgentStateEvent event) {
-                registerProjectTypes();
-            }
-
-            @Override
-            public void onWsAgentStopped(WsAgentStateEvent event) {
-            }
-        });
+        eventBus.addHandler(WsAgentServerRunningEvent.TYPE, e -> registerProjectTypes());
+        eventBus.addHandler(WsAgentServerStoppedEvent.TYPE, e -> projectTypes.clear());
     }
 
     @Override

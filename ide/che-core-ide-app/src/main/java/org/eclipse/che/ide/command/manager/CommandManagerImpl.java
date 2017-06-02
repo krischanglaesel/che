@@ -33,12 +33,14 @@ import org.eclipse.che.ide.api.command.CommandType;
 import org.eclipse.che.ide.api.command.CommandTypeRegistry;
 import org.eclipse.che.ide.api.command.CommandUpdatedEvent;
 import org.eclipse.che.ide.api.command.CommandsLoadedEvent;
-import org.eclipse.che.ide.api.machine.events.WsAgentStateEvent;
-import org.eclipse.che.ide.api.machine.events.WsAgentStateHandler;
+import org.eclipse.che.ide.api.machine.WsAgentServerRunningEvent;
+import org.eclipse.che.ide.api.machine.WsAgentServerStoppedEvent;
 import org.eclipse.che.ide.api.resources.Project;
 import org.eclipse.che.ide.api.resources.Resource;
 import org.eclipse.che.ide.api.selection.Selection;
 import org.eclipse.che.ide.api.selection.SelectionAgent;
+import org.eclipse.che.ide.api.workspace.model.MachineImpl;
+import org.eclipse.che.ide.api.workspace.model.WorkspaceImpl;
 import org.eclipse.che.ide.util.loging.Log;
 
 import java.util.Arrays;
@@ -88,19 +90,22 @@ public class CommandManagerImpl implements CommandManager {
 
         commands = new HashMap<>();
 
-        eventBus.addHandler(WsAgentStateEvent.TYPE, new WsAgentStateHandler() {
-            @Override
-            public void onWsAgentStarted(WsAgentStateEvent event) {
-                fetchCommands();
-            }
+        eventBus.addHandler(WsAgentServerRunningEvent.TYPE, e -> initialize());
+        eventBus.addHandler(WsAgentServerStoppedEvent.TYPE, e -> initialize());
 
-            @Override
-            public void onWsAgentStopped(WsAgentStateEvent event) {
-            }
-        });
+        initialize();
     }
 
-    private void fetchCommands() {
+    private void initialize() {
+        commands.clear();
+
+        final WorkspaceImpl workspace = appContext.getWorkspace();
+        final Optional<MachineImpl> devMachine = workspace.getDevMachine();
+
+        if (!devMachine.isPresent()) {
+            return;
+        }
+
         // get all commands related to the workspace
         workspaceCommandManager.getCommands()
                                .forEach(command -> commands.put(command.getName(), new CommandImpl(command, new ApplicableContext())));
@@ -108,11 +113,11 @@ public class CommandManagerImpl implements CommandManager {
         // get all commands related to the projects
         Arrays.stream(appContext.getProjects())
               .forEach(project -> projectCommandManager.getCommands(project).forEach(projectCommand -> {
-                  final CommandImpl existedCommand = this.commands.get(projectCommand.getName());
+                  final CommandImpl existedCommand = commands.get(projectCommand.getName());
 
                   if (existedCommand == null) {
-                      this.commands.put(projectCommand.getName(),
-                                        new CommandImpl(projectCommand, new ApplicableContext(project.getPath())));
+                      commands.put(projectCommand.getName(),
+                                   new CommandImpl(projectCommand, new ApplicableContext(project.getPath())));
                   } else {
                       if (projectCommand.equalsIgnoreContext(existedCommand)) {
                           existedCommand.getApplicableContext().addProject(project.getPath());
@@ -123,7 +128,7 @@ public class CommandManagerImpl implements CommandManager {
                   }
               }));
 
-        notifyCommandsLoaded();
+        notifyCommandsReloaded();
     }
 
     @Override
@@ -135,7 +140,7 @@ public class CommandManagerImpl implements CommandManager {
     }
 
     @Override
-    public java.util.Optional<CommandImpl> getCommand(String name) {
+    public Optional<CommandImpl> getCommand(String name) {
         return commands.values()
                        .stream()
                        .filter(command -> name.equals(command.getName()))
@@ -368,7 +373,7 @@ public class CommandManagerImpl implements CommandManager {
         return null;
     }
 
-    private void notifyCommandsLoaded() {
+    private void notifyCommandsReloaded() {
         eventBus.fireEvent(new CommandsLoadedEvent());
     }
 

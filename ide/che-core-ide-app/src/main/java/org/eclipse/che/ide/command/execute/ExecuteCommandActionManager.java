@@ -11,6 +11,7 @@
 package org.eclipse.che.ide.command.execute;
 
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import com.google.web.bindery.event.shared.EventBus;
 
@@ -44,7 +45,7 @@ public class ExecuteCommandActionManager {
     private static final String COMMAND_ACTION_ID_PREFIX        = "command_";
     private static final String GOAL_ACTION_GROUP_ID_PREFIX     = "goal_";
 
-    private final CommandManager              commandManager;
+    private final Provider<CommandManager>    commandManagerProvider;
     private final ActionManager               actionManager;
     private final CommandsActionGroup         commandsActionGroup;
     private final GoalPopUpGroupFactory       goalPopUpGroupFactory;
@@ -58,14 +59,14 @@ public class ExecuteCommandActionManager {
     private final Map<String, DefaultActionGroup> goalPopUpGroups;
 
     @Inject
-    public ExecuteCommandActionManager(CommandManager commandManager,
+    public ExecuteCommandActionManager(Provider<CommandManager> commandManagerProvider,
                                        ActionManager actionManager,
                                        CommandsActionGroup commandsActionGroup,
                                        GoalPopUpGroupFactory goalPopUpGroupFactory,
                                        ExecuteCommandActionFactory commandActionFactory,
                                        CommandGoalRegistry goalRegistry,
                                        EventBus eventBus) {
-        this.commandManager = commandManager;
+        this.commandManagerProvider = commandManagerProvider;
         this.actionManager = actionManager;
         this.commandsActionGroup = commandsActionGroup;
         this.goalPopUpGroupFactory = goalPopUpGroupFactory;
@@ -76,7 +77,18 @@ public class ExecuteCommandActionManager {
         commandActions = new HashMap<>();
         goalPopUpGroups = new HashMap<>();
 
+        initialize();
+
         eventBus.addHandler(CommandsLoadedEvent.getType(), event -> start());
+    }
+
+    private void initialize() {
+        actionManager.registerAction(COMMANDS_ACTION_GROUP_ID_PREFIX, commandsActionGroup);
+
+        // inject 'Commands' menu into context menus
+        ((DefaultActionGroup)actionManager.getAction(GROUP_MAIN_CONTEXT_MENU)).add(commandsActionGroup);
+        ((DefaultActionGroup)actionManager.getAction(GROUP_EDITOR_TAB_CONTEXT_MENU)).add(commandsActionGroup);
+        ((DefaultActionGroup)actionManager.getAction(GROUP_CONSOLES_TREE_CONTEXT_MENU)).add(commandsActionGroup);
     }
 
     private void start() {
@@ -87,14 +99,7 @@ public class ExecuteCommandActionManager {
             addAction(e.getUpdatedCommand());
         });
 
-        actionManager.registerAction(COMMANDS_ACTION_GROUP_ID_PREFIX, commandsActionGroup);
-
-        // inject 'Commands' menu into context menus
-        ((DefaultActionGroup)actionManager.getAction(GROUP_MAIN_CONTEXT_MENU)).add(commandsActionGroup);
-        ((DefaultActionGroup)actionManager.getAction(GROUP_EDITOR_TAB_CONTEXT_MENU)).add(commandsActionGroup);
-        ((DefaultActionGroup)actionManager.getAction(GROUP_CONSOLES_TREE_CONTEXT_MENU)).add(commandsActionGroup);
-
-        commandManager.getCommands().forEach(this::addAction);
+        commandManagerProvider.get().getCommands().forEach(this::addAction);
     }
 
     /**

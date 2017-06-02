@@ -65,13 +65,13 @@ public class TerminalInitializer {
             }
         });
 
-        eventBus.addHandler(WorkspaceStartingEvent.TYPE, event -> maximizeTerminal());
+//        eventBus.addHandler(WorkspaceStartingEvent.TYPE, event -> maximizeTerminal());
 
-        eventBus.addHandler(WorkspaceStoppedEvent.TYPE, event -> maximizeTerminal());
+//        eventBus.addHandler(WorkspaceStoppedEvent.TYPE, event -> maximizeTerminal());
 
-        if (appContext.getWorkspace() == null || WorkspaceStatus.RUNNING != appContext.getWorkspace().getStatus()) {
-            maximizeTerminal();
-        }
+//        if (appContext.getWorkspace() == null || WorkspaceStatus.RUNNING != appContext.getWorkspace().getStatus()) {
+//            maximizeTerminal();
+//        }
 
         Promise<Void> termInitPromise = AsyncPromiseHelper.createFromAsyncRequest(callback -> injectTerminal(requireJsLoader, callback));
         terminalModule.setInitializerPromise(termInitPromise);

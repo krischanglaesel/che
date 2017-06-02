@@ -16,7 +16,6 @@ import com.google.inject.Singleton;
 import com.google.web.bindery.event.shared.EventBus;
 
 import org.eclipse.che.api.core.model.factory.Factory;
-import org.eclipse.che.api.core.model.workspace.Workspace;
 import org.eclipse.che.ide.api.app.AppContext;
 import org.eclipse.che.ide.api.app.CurrentUser;
 import org.eclipse.che.ide.api.app.StartUpAction;
@@ -134,8 +133,8 @@ public class AppContextImpl implements AppContext,
     }
 
     /** Sets the current workspace. */
-    public void setWorkspace(Workspace workspace) {
-        this.workspace = new WorkspaceImpl(workspace);
+    public void setWorkspace(WorkspaceImpl workspace) {
+        this.workspace = workspace;
 
         if (workspace != null) {
             if (workspace.getRuntime() != null) {
@@ -401,7 +400,7 @@ public class AppContextImpl implements AppContext,
 
     @Override
     public void onWorkspaceStopped(WorkspaceStoppedEvent event) {
-        appStateManager.get().persistWorkspaceState(getWorkspaceId()).then(ignored -> {
+        appStateManager.get().persistWorkspaceState().then(ignored -> {
             for (Project project : rootProjects) {
                 eventBus.fireEvent(new ResourceChangedEvent(new ResourceDeltaImpl(project, REMOVED)));
             }

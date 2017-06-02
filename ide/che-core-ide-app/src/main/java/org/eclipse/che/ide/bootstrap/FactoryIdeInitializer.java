@@ -21,12 +21,11 @@ import org.eclipse.che.api.promises.client.Operation;
 import org.eclipse.che.api.promises.client.OperationException;
 import org.eclipse.che.api.promises.client.Promise;
 import org.eclipse.che.api.promises.client.PromiseError;
-import org.eclipse.che.api.workspace.shared.dto.WorkspaceDto;
 import org.eclipse.che.ide.api.app.AppContext;
 import org.eclipse.che.ide.api.dialogs.DialogFactory;
 import org.eclipse.che.ide.api.factory.FactoryServiceClient;
 import org.eclipse.che.ide.api.theme.ThemeAgent;
-import org.eclipse.che.ide.workspace.WorkspaceServiceClient;
+import org.eclipse.che.ide.api.workspace.model.WorkspaceImpl;
 import org.eclipse.che.ide.context.AppContextImpl;
 import org.eclipse.che.ide.context.BrowserAddress;
 import org.eclipse.che.ide.context.QueryParameters;
@@ -34,6 +33,7 @@ import org.eclipse.che.ide.core.StandardComponentInitializer;
 import org.eclipse.che.ide.preferences.StyleInjector;
 import org.eclipse.che.ide.statepersistance.AppStateManager;
 import org.eclipse.che.ide.workspace.WorkspacePresenter;
+import org.eclipse.che.ide.workspace.WorkspaceServiceClient;
 import org.eclipse.che.ide.workspace.create.CreateWorkspacePresenter;
 
 import java.util.HashMap;
@@ -81,7 +81,7 @@ class FactoryIdeInitializer extends GeneralIdeInitializer {
     }
 
     @Override
-    public Promise<WorkspaceDto> getWorkspaceToStart() {
+    public Promise<WorkspaceImpl> getWorkspaceToStart() {
         final String workspaceId = queryParameters.getByName("workspaceId");
 
         return workspaceServiceClient.getWorkspace(workspaceId);

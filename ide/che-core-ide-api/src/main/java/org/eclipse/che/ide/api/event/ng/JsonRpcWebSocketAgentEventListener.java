@@ -65,6 +65,9 @@ public class JsonRpcWebSocketAgentEventListener implements WsAgentStateHandler {
         this.execAgentCommandManager = execAgentCommandManager;
 
         eventBus.addHandler(WsAgentStateEvent.TYPE, this);
+
+        // TODO: check whether workspace is already running and do all initializations
+        // ServerEvents should be used only for initializations during IDE session
     }
 
     @Override
@@ -146,6 +149,7 @@ public class JsonRpcWebSocketAgentEventListener implements WsAgentStateHandler {
 
     }
 
+    // TODO: should be moved to plugin-git
     private void initializeGitCheckoutWatcher() {
         requestTransmitter.newRequest()
                           .endpointId("ws-agent")

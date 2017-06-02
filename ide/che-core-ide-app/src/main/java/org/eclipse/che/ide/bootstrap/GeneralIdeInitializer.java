@@ -33,6 +33,7 @@ import org.eclipse.che.ide.api.app.CurrentUser;
 import org.eclipse.che.ide.api.dialogs.DialogFactory;
 import org.eclipse.che.ide.api.event.WindowActionEvent;
 import org.eclipse.che.ide.api.theme.ThemeAgent;
+import org.eclipse.che.ide.api.workspace.model.WorkspaceImpl;
 import org.eclipse.che.ide.context.AppContextImpl;
 import org.eclipse.che.ide.context.BrowserAddress;
 import org.eclipse.che.ide.core.StandardComponentInitializer;
@@ -100,9 +101,9 @@ class GeneralIdeInitializer implements IdeInitializer {
     }
 
     @Override
-    public Promise<WorkspaceDto> getWorkspaceToStart() {
+    public Promise<WorkspaceImpl> getWorkspaceToStart() {
         final String workspaceKey = browserAddress.getWorkspaceKey();
-        Promise<WorkspaceDto> ws = workspaceServiceClient.getWorkspace(workspaceKey);
+        Promise<WorkspaceImpl> ws = workspaceServiceClient.getWorkspace(workspaceKey);
         LOG.debug("Got workspace: " + workspaceKey);
         return ws;
     }
@@ -133,7 +134,7 @@ class GeneralIdeInitializer implements IdeInitializer {
     protected Promise<Void> initAppContext() {
 
         return getWorkspaceToStart()
-                .then((Function<WorkspaceDto, Void>)workspace -> {
+                .then((Function<WorkspaceImpl, Void>)workspace -> {
 
                     Log.info(GeneralIdeInitializer.class, "Workspace -> " + workspace);
 

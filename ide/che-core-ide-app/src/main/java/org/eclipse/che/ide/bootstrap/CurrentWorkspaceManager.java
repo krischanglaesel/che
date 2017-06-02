@@ -13,6 +13,7 @@ package org.eclipse.che.ide.bootstrap;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
+import com.google.web.bindery.event.shared.EventBus;
 
 import org.eclipse.che.api.core.model.workspace.WorkspaceStatus;
 import org.eclipse.che.ide.CoreLocalizationConstant;
@@ -47,6 +48,7 @@ public class CurrentWorkspaceManager {
     private final WorkspaceStatusHandler        wsStatusHandler;
     private final AppContext                    appContext;
     private final SubscriptionManagerClient     subscriptionManagerClient;
+    private final EventBus                      eventBus;
 
     @Inject
     CurrentWorkspaceManager(WorkspaceServiceClient workspaceServiceClient,
@@ -55,7 +57,8 @@ public class CurrentWorkspaceManager {
                             CoreLocalizationConstant messages,
                             WorkspaceStatusHandler wsStatusHandler,
                             AppContext appContext,
-                            SubscriptionManagerClient subscriptionManagerClient) {
+                            SubscriptionManagerClient subscriptionManagerClient,
+                            EventBus eventBus) {
         this.workspaceServiceClient = workspaceServiceClient;
         this.wsStatusNotification = loader;
         this.notificationManagerProvider = notificationManagerProvider;
@@ -63,6 +66,7 @@ public class CurrentWorkspaceManager {
         this.wsStatusHandler = wsStatusHandler;
         this.appContext = appContext;
         this.subscriptionManagerClient = subscriptionManagerClient;
+        this.eventBus = eventBus;
     }
 
     // TODO: handle errors while workspace starting (show message dialog)

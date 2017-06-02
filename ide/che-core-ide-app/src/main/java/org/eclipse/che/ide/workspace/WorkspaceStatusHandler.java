@@ -19,13 +19,18 @@ import org.eclipse.che.api.workspace.shared.dto.event.WorkspaceStatusEvent;
 import org.eclipse.che.ide.CoreLocalizationConstant;
 import org.eclipse.che.ide.actions.WorkspaceSnapshotNotifier;
 import org.eclipse.che.ide.api.app.AppContext;
+import org.eclipse.che.ide.api.machine.ServerStoppedEvent;
+import org.eclipse.che.ide.api.machine.WsAgentServerStoppedEvent;
 import org.eclipse.che.ide.api.machine.WsAgentStateController;
 import org.eclipse.che.ide.api.machine.WsAgentURLModifier;
 import org.eclipse.che.ide.api.notification.NotificationManager;
 import org.eclipse.che.ide.api.workspace.event.WorkspaceStartedEvent;
 import org.eclipse.che.ide.api.workspace.event.WorkspaceStartingEvent;
+import org.eclipse.che.ide.api.workspace.event.WorkspaceStatusChangedEvent;
 import org.eclipse.che.ide.api.workspace.event.WorkspaceStoppedEvent;
 import org.eclipse.che.ide.api.workspace.model.MachineImpl;
+import org.eclipse.che.ide.api.workspace.model.RuntimeImpl;
+import org.eclipse.che.ide.api.workspace.model.WorkspaceImpl;
 import org.eclipse.che.ide.context.AppContextImpl;
 import org.eclipse.che.ide.resource.Path;
 import org.eclipse.che.ide.ui.loaders.LoaderPresenter;
@@ -91,16 +96,36 @@ public class WorkspaceStatusHandler {
         workspaceServiceClient.getWorkspace(appContext.getWorkspaceId()).then(workspace -> {
             ((AppContextImpl)appContext).setWorkspace(workspace);
 
+            eventBus.fireEvent(new WorkspaceStatusChangedEvent(serverEvent.getStatus()));
+
             if (workspace.getStatus() == RUNNING) {
                 handleWorkspaceRunning(workspace);
             } else if (workspace.getStatus() == STARTING) {
                 eventBus.fireEvent(new WorkspaceStartingEvent(workspace));
             } else if (workspace.getStatus() == STOPPED) {
                 eventBus.fireEvent(new WorkspaceStoppedEvent(workspace));
+
+                // TODO: remove when real events are finished
+                fakeStopAllServers();
             }
 
             notify(serverEvent);
         });
+    }
+
+    private void fakeStopAllServers() {
+        final WorkspaceImpl workspace = appContext.getWorkspace();
+        final RuntimeImpl runtime = workspace.getRuntime();
+
+        if (runtime != null) {
+            runtime.getMachines()
+                   .values()
+                   .forEach(machine -> machine
+                           .getServers()
+                           .values()
+                           .forEach(server -> eventBus.fireEvent(new ServerStoppedEvent(server.getName(), machine.getName()))));
+        }
+        eventBus.fireEvent(new WsAgentServerStoppedEvent());
     }
 
     public void handleWorkspaceRunning(Workspace workspace) {

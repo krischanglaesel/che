@@ -21,8 +21,7 @@ import org.eclipse.che.ide.api.action.ActionManager;
 import org.eclipse.che.ide.api.action.DefaultActionGroup;
 import org.eclipse.che.ide.api.command.CommandProducer;
 import org.eclipse.che.ide.api.constraints.Constraints;
-import org.eclipse.che.ide.api.machine.events.WsAgentStateEvent;
-import org.eclipse.che.ide.api.machine.events.WsAgentStateHandler;
+import org.eclipse.che.ide.api.machine.WsAgentServerRunningEvent;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -39,7 +38,7 @@ import static org.eclipse.che.ide.api.constraints.Anchor.AFTER;
  * @see CommandProducer
  */
 @Singleton
-public class CommandProducerActionManager implements WsAgentStateHandler {
+public class CommandProducerActionManager {
 
     private final ActionManager                actionManager;
     private final CommandProducerActionFactory commandProducerActionFactory;
@@ -63,7 +62,7 @@ public class CommandProducerActionManager implements WsAgentStateHandler {
 
         commandProducers = new HashSet<>();
 
-        eventBus.addHandler(WsAgentStateEvent.TYPE, this);
+        eventBus.addHandler(WsAgentServerRunningEvent.TYPE, event -> commandProducers.forEach(this::createActionsForProducer));
     }
 
     @Inject(optional = true)
@@ -86,15 +85,6 @@ public class CommandProducerActionManager implements WsAgentStateHandler {
         commandActionsToolbarGroup.add(commandActionsPopUpGroup);
         DefaultActionGroup mainToolbarGroup = (DefaultActionGroup)actionManager.getAction(GROUP_MAIN_TOOLBAR);
         mainToolbarGroup.add(commandActionsToolbarGroup, new Constraints(AFTER, "changeResourceGroup"));
-    }
-
-    @Override
-    public void onWsAgentStarted(WsAgentStateEvent event) {
-        commandProducers.forEach(this::createActionsForProducer);
-    }
-
-    @Override
-    public void onWsAgentStopped(WsAgentStateEvent event) {
     }
 
     /** Creates actions for the given {@link CommandProducer}. */

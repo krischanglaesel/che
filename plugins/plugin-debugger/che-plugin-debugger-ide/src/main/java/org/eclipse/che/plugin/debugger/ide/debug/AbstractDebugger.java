@@ -14,9 +14,9 @@ import com.google.common.base.Optional;
 import com.google.gwt.user.client.rpc.AsyncCallback;
 import com.google.web.bindery.event.shared.EventBus;
 
+import org.eclipse.che.api.core.jsonrpc.commons.RequestHandlerConfigurator;
 import org.eclipse.che.api.core.jsonrpc.commons.RequestHandlerManager;
 import org.eclipse.che.api.core.jsonrpc.commons.RequestTransmitter;
-import org.eclipse.che.api.core.jsonrpc.commons.RequestHandlerConfigurator;
 import org.eclipse.che.api.debug.shared.dto.BreakpointDto;
 import org.eclipse.che.api.debug.shared.dto.DebugSessionDto;
 import org.eclipse.che.api.debug.shared.dto.LocationDto;
@@ -54,8 +54,7 @@ import org.eclipse.che.commons.annotation.Nullable;
 import org.eclipse.che.ide.api.debug.Breakpoint;
 import org.eclipse.che.ide.api.debug.BreakpointManager;
 import org.eclipse.che.ide.api.debug.DebuggerServiceClient;
-import org.eclipse.che.ide.api.machine.events.WsAgentStateEvent;
-import org.eclipse.che.ide.api.machine.events.WsAgentStateHandler;
+import org.eclipse.che.ide.api.machine.WsAgentServerRunningEvent;
 import org.eclipse.che.ide.api.notification.NotificationManager;
 import org.eclipse.che.ide.api.resources.Project;
 import org.eclipse.che.ide.api.resources.Resource;
@@ -143,47 +142,39 @@ public abstract class AbstractDebugger implements Debugger, DebuggerObservable {
         addHandlers();
     }
 
-
     private void addHandlers() {
-        eventBus.addHandler(WsAgentStateEvent.TYPE, new WsAgentStateHandler() {
-            @Override
-            public void onWsAgentStarted(WsAgentStateEvent event) {
-                subscribeToDebuggerEvents();
+        eventBus.addHandler(WsAgentServerRunningEvent.TYPE, e -> {
+            subscribeToDebuggerEvents();
 
-                if (!isConnected()) {
-                    return;
+            if (!isConnected()) {
+                return;
+            }
+            Promise<DebugSessionDto> promise = service.getSessionInfo(debugSessionDto.getId());
+            promise.then(debugSessionDto -> {
+                debuggerManager.setActiveDebugger(AbstractDebugger.this);
+                setDebugSession(debugSessionDto);
+
+                DebuggerInfo debuggerInfo = debugSessionDto.getDebuggerInfo();
+                String info = debuggerInfo.getName() + " " + debuggerInfo.getVersion();
+                String address = debuggerInfo.getHost() + ":" + debuggerInfo.getPort();
+                DebuggerDescriptor debuggerDescriptor = new DebuggerDescriptor(info, address);
+
+                for (DebuggerObserver observer : observers) {
+                    observer.onDebuggerAttached(debuggerDescriptor, Promises.resolve(null));
                 }
-                Promise<DebugSessionDto> promise = service.getSessionInfo(debugSessionDto.getId());
-                promise.then(debugSessionDto -> {
-                    debuggerManager.setActiveDebugger(AbstractDebugger.this);
-                    setDebugSession(debugSessionDto);
 
-                    DebuggerInfo debuggerInfo = debugSessionDto.getDebuggerInfo();
-                    String info = debuggerInfo.getName() + " " + debuggerInfo.getVersion();
-                    String address = debuggerInfo.getHost() + ":" + debuggerInfo.getPort();
-                    DebuggerDescriptor debuggerDescriptor = new DebuggerDescriptor(info, address);
+                for (BreakpointDto breakpoint : debugSessionDto.getBreakpoints()) {
+                    onBreakpointActivated(breakpoint.getLocation());
+                }
 
-                    for (DebuggerObserver observer : observers) {
-                        observer.onDebuggerAttached(debuggerDescriptor, Promises.resolve(null));
-                    }
+                if (currentLocation != null) {
+                    openCurrentFile();
+                }
 
-                    for (BreakpointDto breakpoint : debugSessionDto.getBreakpoints()) {
-                        onBreakpointActivated(breakpoint.getLocation());
-                    }
-
-                    if (currentLocation != null) {
-                        openCurrentFile();
-                    }
-
-                    startCheckingEvents();
-                }).catchError(error -> {
-                    disconnect();
-                });
-            }
-
-            @Override
-            public void onWsAgentStopped(WsAgentStateEvent event) {
-            }
+                startCheckingEvents();
+            }).catchError(error -> {
+                disconnect();
+            });
         });
     }
 

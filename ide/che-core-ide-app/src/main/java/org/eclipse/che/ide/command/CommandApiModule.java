@@ -37,7 +37,6 @@ import org.eclipse.che.ide.command.editor.page.text.PageWithTextEditorView;
 import org.eclipse.che.ide.command.editor.page.text.PageWithTextEditorViewImpl;
 import org.eclipse.che.ide.command.execute.CommandExecutorImpl;
 import org.eclipse.che.ide.command.execute.ExecuteCommandActionFactory;
-import org.eclipse.che.ide.command.execute.ExecuteCommandActionManager;
 import org.eclipse.che.ide.command.execute.GoalPopUpGroupFactory;
 import org.eclipse.che.ide.command.explorer.CommandsExplorerView;
 import org.eclipse.che.ide.command.explorer.CommandsExplorerViewImpl;
@@ -96,7 +95,6 @@ public class CommandApiModule extends AbstractGinModule {
 
         bind(CommandManager.class).to(CommandManagerImpl.class).in(Singleton.class);
         bind(CommandManager.class).asEagerSingleton();
-        bind(ExecuteCommandActionManager.class).asEagerSingleton();
 
         bind(CommandProducerActionManager.class).asEagerSingleton();
 

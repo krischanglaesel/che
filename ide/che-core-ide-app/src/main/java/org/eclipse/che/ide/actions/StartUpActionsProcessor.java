@@ -18,8 +18,7 @@ import com.google.web.bindery.event.shared.EventBus;
 import org.eclipse.che.ide.api.action.ActionManager;
 import org.eclipse.che.ide.api.app.AppContext;
 import org.eclipse.che.ide.api.app.StartUpAction;
-import org.eclipse.che.ide.api.machine.events.WsAgentStateEvent;
-import org.eclipse.che.ide.api.machine.events.WsAgentStateHandler;
+import org.eclipse.che.ide.api.machine.WsAgentServerRunningEvent;
 
 import java.util.List;
 
@@ -40,21 +39,13 @@ public class StartUpActionsProcessor {
         this.appContext = appContext;
         this.actionManager = actionManager;
 
-        eventBus.addHandler(WsAgentStateEvent.TYPE, new WsAgentStateHandler() {
-            @Override
-            public void onWsAgentStarted(WsAgentStateEvent event) {
+        eventBus.addHandler(WsAgentServerRunningEvent.TYPE, e ->
                 new Timer() {
                     @Override
                     public void run() {
                         processActions();
                     }
-                }.schedule(1000);
-            }
-
-            @Override
-            public void onWsAgentStopped(WsAgentStateEvent event) {
-            }
-        });
+                }.schedule(1000));
     }
 
     private void processActions() {

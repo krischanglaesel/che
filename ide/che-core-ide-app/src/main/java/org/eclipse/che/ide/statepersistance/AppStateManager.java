@@ -16,13 +16,11 @@ import elemental.json.JsonFactory;
 import elemental.json.JsonObject;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.gwt.core.client.Scheduler;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import com.google.web.bindery.event.shared.EventBus;
 
-import org.eclipse.che.api.core.model.workspace.Workspace;
 import org.eclipse.che.api.promises.client.Operation;
 import org.eclipse.che.api.promises.client.OperationException;
 import org.eclipse.che.api.promises.client.Promise;
@@ -31,8 +29,7 @@ import org.eclipse.che.ide.api.app.AppContext;
 import org.eclipse.che.ide.api.component.StateComponent;
 import org.eclipse.che.ide.api.event.WindowActionEvent;
 import org.eclipse.che.ide.api.event.WindowActionHandler;
-import org.eclipse.che.ide.api.machine.events.WsAgentStateEvent;
-import org.eclipse.che.ide.api.machine.events.WsAgentStateHandler;
+import org.eclipse.che.ide.api.machine.WsAgentServerRunningEvent;
 import org.eclipse.che.ide.api.preferences.PreferencesManager;
 import org.eclipse.che.ide.util.loging.Log;
 
@@ -70,24 +67,11 @@ public class AppStateManager {
         this.jsonFactory = jsonFactory;
         this.appContext = appContext;
 
-        eventBus.addHandler(WsAgentStateEvent.TYPE, new WsAgentStateHandler() {
-            @Override
-            public void onWsAgentStarted(WsAgentStateEvent event) {
-                Scheduler.get().scheduleDeferred(AppStateManager.this::restoreWorkspaceState);
-            }
-
-            @Override
-            public void onWsAgentStopped(WsAgentStateEvent event) {
-            }
-        });
-
+        eventBus.addHandler(WsAgentServerRunningEvent.TYPE, e -> restoreWorkspaceState());
         eventBus.addHandler(WindowActionEvent.TYPE, new WindowActionHandler() {
             @Override
             public void onWindowClosing(WindowActionEvent event) {
-                final Workspace workspace = appContext.getWorkspace();
-                if (workspace != null) {
-                    persistWorkspaceState(workspace.getId());
-                }
+                persistWorkspaceState();
             }
 
             @Override
@@ -135,7 +119,7 @@ public class AppStateManager {
         }
     }
 
-    public Promise<Void> persistWorkspaceState(String wsId) {
+    public Promise<Void> persistWorkspaceState() {
         final JsonObject settings = Json.createObject();
         JsonObject workspace = Json.createObject();
         settings.put(WORKSPACE, workspace);
@@ -147,7 +131,7 @@ public class AppStateManager {
                 Log.error(getClass(), e);
             }
         }
-        allWsState.put(wsId, settings);
+        allWsState.put(appContext.getWorkspaceId(), settings);
         return writeStateToPreferences(allWsState);
     }
 

@@ -73,6 +73,7 @@ import org.eclipse.che.ide.api.keybinding.KeyBuilder;
 import org.eclipse.che.ide.api.parts.Perspective;
 import org.eclipse.che.ide.api.parts.PerspectiveManager;
 import org.eclipse.che.ide.command.editor.CommandEditorProvider;
+import org.eclipse.che.ide.command.execute.ExecuteCommandActionManager;
 import org.eclipse.che.ide.command.palette.ShowCommandsPaletteAction;
 import org.eclipse.che.ide.connection.WsConnectionListener;
 import org.eclipse.che.ide.imageviewer.ImageViewerProvider;
@@ -485,6 +486,8 @@ public class StandardComponentInitializer {
     @Inject
     private TerminalInitializer terminalInitializer;
 
+    @Inject
+    private ExecuteCommandActionManager executeCommandActionManager;
 
     /** Instantiates {@link StandardComponentInitializer} an creates standard content. */
     @Inject

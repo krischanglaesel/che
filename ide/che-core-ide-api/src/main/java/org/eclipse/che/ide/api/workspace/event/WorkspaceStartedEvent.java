@@ -20,6 +20,7 @@ import org.eclipse.che.api.core.model.workspace.Workspace;
  *
  * @author Dmitry Shnurenko
  */
+@Deprecated
 public class WorkspaceStartedEvent extends GwtEvent<WorkspaceStartedEvent.Handler> {
 
     public interface Handler extends EventHandler {
