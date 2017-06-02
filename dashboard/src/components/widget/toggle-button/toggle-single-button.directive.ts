@@ -32,6 +32,12 @@
  * @author Oleksii Kurinnyi
  */
 
+interface IToggleSingleButtonScope extends ng.IScope {
+  init?: boolean;
+  state?: boolean;
+  onChange: (data: {state: boolean}) => void;
+}
+
 /**
  * Defines a directive for the button which can toggle its state.
  * @author Oleksii Kurinnyi
@@ -59,6 +65,23 @@ export class ToggleSingleButton {
       onChange: '&cheOnChange'
     };
 
+  }
+
+  link($scope: IToggleSingleButtonScope): void {
+
+    if ($scope.init) {
+      $scope.state = $scope.init;
+      $scope.onChange({state: true});
+    }
+    const watcher = $scope.$watch(() => { return $scope.state; }, (newValue: boolean, oldValue: boolean) => {
+      if (newValue === oldValue) {
+        return;
+      }
+      $scope.onChange({state: newValue});
+    });
+    $scope.$on('$destroy', () => {
+      watcher();
+    });
   }
 
 }

@@ -22,7 +22,6 @@ interface IPopoverAttrs extends ng.IAttributes {
 
 interface IPopoverScope extends ng.IScope {
   onChange: Function;
-  toggleButtonValue: boolean;
   isOpenPopover: boolean;
   buttonInitState?: boolean;
   buttonOnChange?: Function;
@@ -59,20 +58,22 @@ export class CheToggleButtonPopover implements ng.IDirective {
   scope = {
     buttonTitle: '@',
     buttonFontIcon: '@',
-    onChange: '&?buttonOnChange',
+    buttonOnChange: '&?buttonOnChange',
     buttonInitState: '=?buttonState',
     buttonValue: '=?',
     chePopoverTitle: '@?',
     chePopoverPlacement: '@?'
   };
 
+  private $q: ng.IQService;
   private $timeout: ng.ITimeoutService;
 
   /**
    * Default constructor that is using resource
    * @ngInject for Dependency injection
    */
-  constructor($timeout: ng.ITimeoutService) {
+  constructor($q: ng.IQService, $timeout: ng.ITimeoutService) {
+    this.$q = $q;
     this.$timeout = $timeout;
   }
 
@@ -83,55 +84,32 @@ export class CheToggleButtonPopover implements ng.IDirective {
   template(): string {
     return `<toggle-single-button che-title="{{buttonTitle}}"
                                   che-font-icon="{{buttonFontIcon}}"
-                                  che-on-change="onChange({state: state})"
+                                  che-on-change="onChange(state)"
                                   che-state="buttonInitState ? buttonInitState : false"
-                                  che-value="toggleButtonValue"
+                                  che-value="buttonValue"
                                   popover-title="{{chePopoverTitle ? chePopoverTitle : ''}}"
                                   popover-placement="{{chePopoverPlacement ? chePopoverPlacement : 'bottom'}}"
                                   popover-is-open="isOpenPopover"
                                   uib-popover-html="'<div class=\\'che-transclude\\'></div>'"></toggle-single-button>`;
   }
 
-  link($scope: IPopoverScope, $element: ng.IAugmentedJQuery, attrs: IPopoverAttrs, ctrl: any, transclude: ng.ITranscludeFunction): void {
-    const updatePopoverEl = () => {
-      this.$timeout(() => {
-        transclude((clonedElement: ng.IAugmentedJQuery) => {
-          $element.find('.che-transclude').replaceWith(clonedElement);
-        });
-      });
-    };
-    // defines initial state of button
-    if (attrs.buttonState) {
-      $scope.isOpenPopover = true;
-      updatePopoverEl();
-    }
+  link($scope: IPopoverScope, $element: ng.IAugmentedJQuery, $attrs: IPopoverAttrs, ctrl: any, $transclude: ng.ITranscludeFunction): void {
 
     $scope.onChange = (state: boolean) => {
       this.$timeout(() => {
+        $scope.isOpenPopover = state;
+      });
+      this.$timeout(() => {
         if (angular.isFunction($scope.buttonOnChange)) {
-          $scope.buttonOnChange(state);
+          $scope.buttonOnChange({state: state});
         }
-        if (!state) {
-          return;
+        if (state) {
+          $transclude((clonedElement: ng.IAugmentedJQuery) => {
+            $element.find('.che-transclude').replaceWith(clonedElement);
+          });
         }
-        updatePopoverEl();
       });
     };
 
-    // add button value watcher if defined
-    if (angular.isUndefined(attrs.buttonValue)) {
-      return;
-    }
-    const watcher = $scope.$watch('buttonValue', (value: boolean) => {
-      if (value === $scope.toggleButtonValue) {
-        return;
-      }
-      $scope.toggleButtonValue = value;
-      $scope.isOpenPopover = value;
-      $scope.onChange(value);
-    });
-    $scope.$on('$destroy', () => {
-      watcher();
-    });
   }
 }
