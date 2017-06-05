@@ -13,8 +13,8 @@ package exec
 
 import (
 	"errors"
+	"github.com/eclipse/che/agents/go-agents/core/jsonrpc"
 	"github.com/eclipse/che/agents/go-agents/core/process"
-	"github.com/eclipse/che/agents/go-agents/core/rpc"
 	"strconv"
 	"strings"
 )
@@ -71,9 +71,9 @@ func checkCommand(command *process.Command) error {
 }
 
 type rpcProcessEventConsumer struct {
-	rpcChannel chan *rpc.Event
+	channel jsonrpc.Channel
 }
 
 func (rpcConsumer *rpcProcessEventConsumer) Accept(e process.Event) {
-	rpcConsumer.rpcChannel <- rpc.NewEvent(e.Type(), e)
+	rpcConsumer.channel.Notify(e.Type(), e)
 }

@@ -20,9 +20,10 @@ import (
 	"time"
 
 	"github.com/eclipse/che/agents/go-agents/core/auth"
+	"github.com/eclipse/che/agents/go-agents/core/jsonrpc"
+	"github.com/eclipse/che/agents/go-agents/core/jsonrpc/jsonrpcws"
 	"github.com/eclipse/che/agents/go-agents/core/process"
 	"github.com/eclipse/che/agents/go-agents/core/rest"
-	"github.com/eclipse/che/agents/go-agents/core/rpc"
 	"github.com/eclipse/che/agents/go-agents/exec-agent/exec"
 )
 
@@ -60,18 +61,38 @@ func main() {
 
 	appHTTPRoutes := []rest.RoutesGroup{
 		exec.HTTPRoutes,
-		rpc.HTTPRoutes,
+		{
+			Name: "JSON-RPC WebSocket Channel Routes",
+			Items: []rest.Route{
+				{
+					Method: "GET",
+					Path:   "/connect",
+					Name:   "Connect to Exec-Agent(websocket)",
+					HandleFunc: func(w http.ResponseWriter, r *http.Request, _ rest.Params) error {
+						conn, err := jsonrpcws.Upgrade(w, r)
+						if err != nil {
+							return err
+						}
+						channel := jsonrpc.NewManagedChannel(conn)
+						channel.Go()
+						log.Println("Say hello")
+						channel.SayHello()
+						return nil
+					},
+				},
+			},
+		},
 	}
 
-	appOpRoutes := []rpc.RoutesGroup{
+	appOpRoutes := []jsonrpc.RoutesGroup{
 		exec.RPCRoutes,
 	}
 
 	// register routes and http handlers
 	r := rest.NewDefaultRouter(config.basePath, appHTTPRoutes)
 	rest.PrintRoutes(appHTTPRoutes)
-	rpc.RegisterRoutes(appOpRoutes)
-	rpc.PrintRoutes(appOpRoutes)
+	jsonrpc.RegRoutesGroups(appOpRoutes)
+	jsonrpc.PrintRoutes(appOpRoutes)
 
 	var handler = getHandler(r)
 	http.Handle("/", handler)
@@ -97,12 +118,16 @@ func getHandler(h http.Handler) http.Handler {
 
 func droppingRPCChannelsUnauthorizedHandler(w http.ResponseWriter, req *http.Request, err error) {
 	token := req.URL.Query().Get("token")
-	for _, c := range rpc.GetChannels() {
-		if u, err1 := url.ParseRequestURI(c.RequestURI); err1 != nil {
-			log.Printf("Couldn't parse the RequestURI '%s' of channel '%s'", c.RequestURI, c.ID)
-		} else if u.Query().Get("token") == token {
-			log.Printf("Token for channel '%s' is expired, trying to drop the channel", c.ID)
-			rpc.DropChannel(c.ID)
+	for _, c := range jsonrpc.GetChannels() {
+		if wsChan, ok := c.Conn.(*jsonrpcws.NativeConnAdapter); ok {
+			if u, err1 := url.ParseRequestURI(wsChan.RequestURI); err1 != nil {
+				log.Printf("Couldn't parse the RequestURI '%s' of channel '%s'", wsChan.RequestURI, c.ID)
+			} else if u.Query().Get("token") == token {
+				log.Printf("Token for channel '%s' is expired, trying to drop the channel", c.ID)
+				if dropped, ok := jsonrpc.Drop(c.ID); ok {
+					dropped.Close()
+				}
+			}
 		}
 	}
 	http.Error(w, err.Error(), http.StatusUnauthorized)
