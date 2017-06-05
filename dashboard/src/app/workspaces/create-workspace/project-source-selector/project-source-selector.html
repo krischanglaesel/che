@@ -1,80 +1,75 @@
 <div class="project-source-selector">
-
-  <toggle-button-popover button-title="Add or Import Project"
-                         button-font-icon="material-design icon-ic_add_24px"
-                         button-state="false"
-                         button-on-change="projectSourceSelectorController.test(state)"
-                         che-popover-placement="right-top">
-
-    <ng-form name="projectSourceSelectorForm">
-
-      <div class="project-source-selector-popover"
-           ng-if="projectSourceSelectorController.isOpen">
-
-        <!-- Source toggle -->
-        <div class="project-source-selector-popover-toggle-button">
-          <che-toggle-joined ng-model="projectSourceSelectorController.selectedSource"
-                             ng-change="projectSourceSelectorController.sourceChanged()"
-                             md-theme="default"
-                             flex-order="2" flex-order-gt-md="1">
-            <che-toggle-joined-button che-title="Samples"
-                                      che-value="projectSourceSelectorController.projectSource.SAMPLES"></che-toggle-joined-button>
-            <che-toggle-joined-button che-title="Blank"
-                                      che-value="projectSourceSelectorController.projectSource.BLANK"></che-toggle-joined-button>
-            <che-toggle-joined-button che-title="Git"
-                                      che-value="projectSourceSelectorController.projectSource.GIT"></che-toggle-joined-button>
-            <che-toggle-joined-button che-title="Github"
-                                      che-value="projectSourceSelectorController.projectSource.GITHUB"></che-toggle-joined-button>
-            <che-toggle-joined-button che-title="Zip"
-                                      che-value="projectSourceSelectorController.projectSource.ZIP"></che-toggle-joined-button>
-          </che-toggle-joined>
-        </div>
-
-        <div class="project-source-selector-popover-sources">
-          <template-selector ng-if="projectSourceSelectorController.selectedSource === projectSourceSelectorController.projectSource.SAMPLES"></template-selector>
-
-          <import-blank-project ng-if="projectSourceSelectorController.selectedSource === projectSourceSelectorController.projectSource.BLANK"></import-blank-project>
-
-          <import-git-project ng-if="projectSourceSelectorController.selectedSource === projectSourceSelectorController.projectSource.GIT"></import-git-project>
-
-          <!--<import-github-project ng-if="projectSourceSelectorController.selectedSource === projectSourceSelectorController.projectSource.GITHUB"></import-github-project>-->
-
-          <import-zip-project ng-if="projectSourceSelectorController.selectedSource === projectSourceSelectorController.projectSource.ZIP"></import-zip-project>
-        </div>
-
-        <md-divider class="project-source-selector-divider"></md-divider>
-
-        <che-button-primary che-button-title="Add"
-                            ng-click="projectSourceSelectorController.addProjectTemplate()"></che-button-primary>
-      </div>
-
-    </ng-form>
-
-  </toggle-button-popover>
-
-  <!-- List of projects to add -->
-  <div ng-repeat="projectTemplate in projectSourceSelectorController.getProjectTemplates()">
-    <toggle-button-popover button-title="{{projectTemplate.name}}"
-                           button-font-icon="chefont cheico-project"
-                           che-popover-placement="right">
-      <ng-form name="projectTemplateForm">
-        <che-input-box che-form="projectTemplateForm"
-                       che-name="name"
-                       che-place-holder="Name of the project"
-                       aria-label="Name of the project"
-                       ng-model="projectTemplate.name"
-                       required
-                       custom-validator="projectSourceSelectorController.isNameUnique($value)"
-                       ng-maxlength="128"
-                       ng-pattern="/^[A-Za-z0-9_\-\.]+$/">
-          <div ng-message="required">A name is required.</div>
-          <div ng-message="customValidator">This project name is already used.</div>
-          <div ng-message="pattern">The name should not contain special characters like space, dollar, etc.</div>
-          <div ng-message="maxlength">The name has to be less than 128 characters long.</div>
-          <div ng-message="md-maxlength">The name has to be less than 128 characters long.</div>
-        </che-input-box>
-      </ng-form>
-    </toggle-button-popover>
+  <div class="che-template-checker">
+    <toggle-single-button class="add-project"
+                          che-title="Add or Import Project"
+                          che-font-icon="fa fa-plus"
+                          che-on-change="projectSourceSelectorController.updateData({state: state, id: 'addProject'})"
+                          ng-init="projectSourceSelectorController.selectButtonId = 'addProject'"
+                          che-value="projectSourceSelectorController.buttonValues['addProject']"></toggle-single-button>
+    <toggle-single-button ng-repeat="projectTemplate in projectSourceSelectorController.getProjectTemplates()"
+                          che-title="{{projectTemplate.name}}"
+                          che-state="false"
+                          che-font-icon="chefont cheico-project"
+                          che-on-change="projectSourceSelectorController.updateData({state: state, id: projectTemplate.name, template: projectTemplate})"
+                          che-value="projectSourceSelectorController.buttonValues[projectTemplate.name]"></toggle-single-button>
   </div>
-
+  <div class="project-source-popover popover right">
+    <div class="arrow"></div>
+    <div ng-switch="projectSourceSelectorController.selectButtonId">
+      <div ng-switch-when="addProject">
+        <div class="project-source-selector-popover">
+          <!-- Source toggle -->
+          <div class="project-source-selector-popover-toggle-button">
+            <che-toggle-joined ng-model="projectSourceSelectorController.selectedSource"
+                               ng-change="projectSourceSelectorController.sourceChanged()"
+                               md-theme="default"
+                               flex-order="2" flex-order-gt-md="1">
+              <che-toggle-joined-button che-title="Samples"
+                                        che-value="projectSourceSelectorController.projectSource.SAMPLES"></che-toggle-joined-button>
+              <che-toggle-joined-button che-title="Blank"
+                                        che-value="projectSourceSelectorController.projectSource.BLANK"></che-toggle-joined-button>
+              <che-toggle-joined-button che-title="Git"
+                                        che-value="projectSourceSelectorController.projectSource.GIT"></che-toggle-joined-button>
+              <che-toggle-joined-button che-title="Github"
+                                        che-value="projectSourceSelectorController.projectSource.GITHUB"></che-toggle-joined-button>
+              <che-toggle-joined-button che-title="Zip"
+                                        che-value="projectSourceSelectorController.projectSource.ZIP"></che-toggle-joined-button>
+            </che-toggle-joined>
+          </div>
+          <div class="project-source-selector-popover-sources">
+            <template-selector
+              ng-if="projectSourceSelectorController.selectedSource === projectSourceSelectorController.projectSource.SAMPLES"></template-selector>
+            <import-blank-project
+              ng-if="projectSourceSelectorController.selectedSource === projectSourceSelectorController.projectSource.BLANK"></import-blank-project>
+            <import-git-project
+              ng-if="projectSourceSelectorController.selectedSource === projectSourceSelectorController.projectSource.GIT"></import-git-project>
+            <import-zip-project
+              ng-if="projectSourceSelectorController.selectedSource === projectSourceSelectorController.projectSource.ZIP"></import-zip-project>
+          </div>
+          <md-divider class="project-source-selector-divider"></md-divider>
+          <che-button-primary che-button-title="Add"
+                              ng-click="projectSourceSelectorController.addProjectTemplate()"></che-button-primary>
+        </div>
+        </ng-form>
+      </div>
+      <div ng-switch-when="projectTemplate">
+        <ng-form name="projectTemplateForm">
+          <che-input-box che-form="projectTemplateForm"
+                         che-name="name"
+                         che-place-holder="Name of the project"
+                         aria-label="Name of the project"
+                         ng-model="projectSourceSelectorController.projectTemplate.name"
+                         required
+                         ng-maxlength="128"
+                         ng-pattern="/^[A-Za-z0-9_\-\.]+$/">
+            <div ng-message="required">A name is required.</div>
+            <div ng-message="customValidator">This project name is already used.</div>
+            <div ng-message="pattern">The name should not contain special characters like space, dollar, etc.</div>
+            <div ng-message="maxlength">The name has to be less than 128 characters long.</div>
+            <div ng-message="md-maxlength">The name has to be less than 128 characters long.</div>
+          </che-input-box>
+        </ng-form>
+      </div>
+    </div>
+  </div>
 </div>

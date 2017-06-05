@@ -16,8 +16,14 @@ import {ProjectSource} from './project-source.enum';
  * This class is handling the controller for the project selector.
  *
  * @author Oleksii Kurinnyi
+ * @author Oleksii Orel
  */
 export class ProjectSourceSelectorController {
+  /**
+   * Updates widget function.
+   */
+  updateWidget: Function;
+
   /**
    * Project selector service.
    */
@@ -30,13 +36,24 @@ export class ProjectSourceSelectorController {
    * Selected project's source.
    */
   private selectedSource: ProjectSource;
+  /**
+   * button's values by Id.
+   */
+  private buttonValues: { [butonId: string]: boolean } = {};
+  /**
+   * Selected button's Id.
+   */
+  private selectButtonId: string;
+  /**
+   * Selected template.
+   */
+  private projectTemplate: che.IProjectTemplate | {};
 
   /**
    * Default constructor that is using resource injection
    * @ngInject for Dependency injection
    */
-  constructor($timeout, projectSourceSelectorService: ProjectSourceSelectorService) {
-    this.$timeout = $timeout;
+  constructor(projectSourceSelectorService: ProjectSourceSelectorService) {
     this.projectSourceSelectorService = projectSourceSelectorService;
 
     this.projectSource = ProjectSource;
@@ -59,13 +76,33 @@ export class ProjectSourceSelectorController {
     this.projectSourceSelectorService.addProjectTemplateFromSource(this.selectedSource);
   }
 
-  // todo remove this method
-  test(state) {
-    console.log('>>> ProjectSourceSelectorController.test');
-    console.log('>>> state: ', state);
-    this.$timeout(() => {
-      this.isOpen = state;
-      console.log('>>> this.isOpen: ', this.isOpen);
-    }, 50)
+  /**
+   * Updates widget data.
+   * @param state {boolean}
+   * @param id {string}
+   * @param template {che.IProjectTemplate}
+   */
+  updateData({state, id, template}: { state: boolean, id: string, template?: che.IProjectTemplate }): void {
+    if (!state) {
+      return;
+    }
+    if (!template) {
+      this.selectButtonId = id;
+      this.projectTemplate = {};
+    } else {
+      this.selectButtonId = 'projectTemplate';
+      this.projectTemplate = template;
+    }
+    // leave only one selected button
+    const keys = Object.keys(this.buttonValues);
+    keys.forEach((key: string) => {
+      if (key !== id && this.buttonValues[key]) {
+        this.buttonValues[key] = false;
+      }
+    });
+    if (angular.isFunction(this.updateWidget)) {
+      // update widget
+      this.updateWidget();
+    }
   }
 }
