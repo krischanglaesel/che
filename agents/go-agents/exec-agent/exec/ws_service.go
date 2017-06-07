@@ -37,6 +37,7 @@ const (
 
 // Error codes
 const (
+	ProcessAPIErrorCode      = 100
 	NoSuchProcessErrorCode   = -32000
 	ProcessNotAliveErrorCode = -32001
 )
@@ -48,42 +49,42 @@ var RPCRoutes = jsonrpc.RoutesGroup{
 		{
 			Method: StartMethod,
 			Decode: jsonrpc.FactoryDec(func() interface{} { return &StartParams{} }),
-			Handle: jsonrpc.RetErrorHandle(startProcess),
+			Handle: jsonrpc.RetErrorHandle(jsonrpcStartProcess),
 		},
 		{
 			Method: KillMethod,
 			Decode: jsonrpc.FactoryDec(func() interface{} { return &KillParams{} }),
-			Handle: jsonrpc.RetHandle(killProcess),
+			Handle: jsonrpc.RetHandle(jsonrpcKillProcess),
 		},
 		{
 			Method: SubscribeMethod,
 			Decode: jsonrpc.FactoryDec(func() interface{} { return &SubscribeParams{} }),
-			Handle: jsonrpc.RetErrorHandle(subscribe),
+			Handle: jsonrpc.RetErrorHandle(jsonrpcSubscribe),
 		},
 		{
 			Method: UnsubscribeMethod,
 			Decode: jsonrpc.FactoryDec(func() interface{} { return &UnsubscribeParams{} }),
-			Handle: unsubscribe,
+			Handle: jsonrpcUnsubscribe,
 		},
 		{
 			Method: UpdateSubscriberMethod,
 			Decode: jsonrpc.FactoryDec(func() interface{} { return &UpdateSubscriberParams{} }),
-			Handle: jsonrpc.RetErrorHandle(updateSubscriber),
+			Handle: jsonrpc.RetErrorHandle(jsonrpcUpdateSubscriber),
 		},
 		{
 			Method: GetLogsMethod,
 			Decode: jsonrpc.FactoryDec(func() interface{} { return &GetLogsParams{} }),
-			Handle: jsonrpc.RetHandle(getProcessLogs),
+			Handle: jsonrpc.RetHandle(jsonrpcGetProcessLogs),
 		},
 		{
 			Method: GetProcessMethod,
 			Decode: jsonrpc.FactoryDec(func() interface{} { return &GetProcessParams{} }),
-			Handle: getProcessReqHF,
+			Handle: jsonrpcGetProcess,
 		},
 		{
 			Method: GetProcessesMethod,
 			Decode: jsonrpc.FactoryDec(func() interface{} { return &GetProcessesParams{} }),
-			Handle: getProcessesReqHF,
+			Handle: jsonrpcGetProcesses,
 		},
 	},
 }
@@ -102,7 +103,7 @@ type StartParams struct {
 	EventTypes  string `json:"eventTypes"`
 }
 
-func startProcess(params interface{}, t jsonrpc.ResponseTransmitter) error {
+func jsonrpcStartProcess(params interface{}, t jsonrpc.ResponseTransmitter) error {
 	startParams := params.(*StartParams)
 	command := process.Command{
 		Name:        startParams.Name,
@@ -129,7 +130,7 @@ type KillParams struct {
 	NativePid uint64 `json:"nativePid"`
 }
 
-func killProcess(params interface{}) (interface{}, error) {
+func jsonrpcKillProcess(params interface{}) (interface{}, error) {
 	killParams := params.(*KillParams)
 	if err := process.Kill(killParams.Pid); err != nil {
 		return nil, asRPCError(err)
@@ -151,7 +152,7 @@ type SubscribeParams struct {
 	After      string `json:"after"`
 }
 
-func subscribe(params interface{}, t jsonrpc.ResponseTransmitter) error {
+func jsonrpcSubscribe(params interface{}, t jsonrpc.ResponseTransmitter) error {
 	subscribeParams := params.(*SubscribeParams)
 
 	mask := maskFromTypes(subscribeParams.EventTypes)
@@ -191,7 +192,7 @@ type UnsubscribeParams struct {
 	Pid uint64 `json:"pid"`
 }
 
-func unsubscribe(params interface{}, t jsonrpc.ResponseTransmitter) {
+func jsonrpcUnsubscribe(params interface{}, t jsonrpc.ResponseTransmitter) {
 	unsubscribeParams := params.(*UnsubscribeParams)
 	if err := process.RemoveSubscriber(unsubscribeParams.Pid, t.Channel().ID); err != nil {
 		t.SendError(asRPCError(err))
@@ -206,7 +207,7 @@ type UpdateSubscriberParams struct {
 	EventTypes string `json:"eventTypes"`
 }
 
-func updateSubscriber(params interface{}, t jsonrpc.ResponseTransmitter) error {
+func jsonrpcUpdateSubscriber(params interface{}, t jsonrpc.ResponseTransmitter) error {
 	updateParams := params.(*UpdateSubscriberParams)
 	if updateParams.EventTypes == "" {
 		return jsonrpc.NewArgsError(errors.New("'eventTypes' required for subscriber update"))
@@ -231,7 +232,7 @@ type GetLogsParams struct {
 	Skip  int    `json:"skip"`
 }
 
-func getProcessLogs(params interface{}) (interface{}, error) {
+func jsonrpcGetProcessLogs(params interface{}) (interface{}, error) {
 	getLogsParams := params.(*GetLogsParams)
 
 	if getLogsParams.Skip < 0 {
@@ -284,7 +285,7 @@ type GetProcessParams struct {
 	Pid uint64 `json:"pid"`
 }
 
-func getProcessReqHF(body interface{}, t jsonrpc.ResponseTransmitter) {
+func jsonrpcGetProcess(body interface{}, t jsonrpc.ResponseTransmitter) {
 	params := body.(*GetProcessParams)
 	p, err := process.Get(params.Pid)
 	if err != nil {
@@ -299,7 +300,7 @@ type GetProcessesParams struct {
 	All bool `json:"all"`
 }
 
-func getProcessesReqHF(body interface{}, t jsonrpc.ResponseTransmitter) {
+func jsonrpcGetProcesses(body interface{}, t jsonrpc.ResponseTransmitter) {
 	params := body.(GetProcessesParams)
 	t.Send(process.GetProcesses(params.All))
 }
@@ -310,5 +311,5 @@ func asRPCError(err error) *jsonrpc.Error {
 	} else if naErr, ok := err.(*process.NotAliveError); ok {
 		return jsonrpc.NewError(ProcessNotAliveErrorCode, naErr)
 	}
-	return jsonrpc.NewError(jsonrpc.InternalErrorCode, err)
+	return jsonrpc.NewError(ProcessAPIErrorCode, err)
 }

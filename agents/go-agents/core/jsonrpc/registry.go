@@ -8,8 +8,8 @@ func Save(channel Channel) {
 	DefaultRegistry.Save(channel)
 }
 
-func Drop(id string) (Channel, bool) {
-	return DefaultRegistry.Drop(id)
+func Rm(id string) (Channel, bool) {
+	return DefaultRegistry.Rm(id)
 }
 
 func GetChannels() []Channel {
@@ -31,7 +31,7 @@ func (cm *ChannelRegistry) Save(channel Channel) {
 	cm.channels[channel.ID] = channel
 }
 
-func (cm *ChannelRegistry) Drop(id string) (Channel, bool) {
+func (cm *ChannelRegistry) Rm(id string) (Channel, bool) {
 	cm.Lock()
 	defer cm.Unlock()
 	channel, ok := cm.channels[id]

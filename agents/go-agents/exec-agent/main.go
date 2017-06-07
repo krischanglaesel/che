@@ -75,7 +75,6 @@ func main() {
 						}
 						channel := jsonrpc.NewManagedChannel(conn)
 						channel.Go()
-						log.Println("Say hello")
 						channel.SayHello()
 						return nil
 					},
@@ -124,7 +123,7 @@ func droppingRPCChannelsUnauthorizedHandler(w http.ResponseWriter, req *http.Req
 				log.Printf("Couldn't parse the RequestURI '%s' of channel '%s'", wsChan.RequestURI, c.ID)
 			} else if u.Query().Get("token") == token {
 				log.Printf("Token for channel '%s' is expired, trying to drop the channel", c.ID)
-				if dropped, ok := jsonrpc.Drop(c.ID); ok {
+				if dropped, ok := jsonrpc.Rm(c.ID); ok {
 					dropped.Close()
 				}
 			}
