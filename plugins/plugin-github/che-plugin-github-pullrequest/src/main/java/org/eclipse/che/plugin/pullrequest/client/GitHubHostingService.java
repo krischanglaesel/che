@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.che.plugin.pullrequest.client;
 
+import org.eclipse.che.api.promises.client.Operation;
+import org.eclipse.che.api.promises.client.OperationException;
 import org.eclipse.che.plugin.pullrequest.client.vcs.hosting.HostingServiceTemplates;
 import org.eclipse.che.plugin.pullrequest.client.vcs.hosting.NoCommitsInPullRequestException;
 import org.eclipse.che.plugin.pullrequest.client.vcs.hosting.NoHistoryInCommonException;
@@ -21,6 +23,7 @@ import org.eclipse.che.plugin.pullrequest.client.vcs.hosting.VcsHostingService;
 import org.eclipse.che.plugin.pullrequest.shared.dto.HostUser;
 import org.eclipse.che.plugin.pullrequest.shared.dto.PullRequest;
 import org.eclipse.che.plugin.pullrequest.shared.dto.Repository;
+
 import com.google.gwt.regexp.shared.RegExp;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.rpc.AsyncCallback;
@@ -185,7 +188,7 @@ public class GitHubHostingService implements VcsHostingService {
     @NotNull
     @Override
     public String makePullRequestUrl(@NotNull final String username, @NotNull final String repository,
-                                              @NotNull final String pullRequestNumber) {
+                                     @NotNull final String pullRequestNumber) {
         return templates.pullRequestUrlTemplate(username, repository, pullRequestNumber);
     }
 
@@ -248,22 +251,17 @@ public class GitHubHostingService implements VcsHostingService {
                                  @NotNull final String repository,
                                  @NotNull final AsyncCallback<List<PullRequest>> callback) {
 
-        gitHubClientService.getPullRequests(owner, repository, new AsyncRequestCallback<GitHubPullRequestList>(
-                dtoUnmarshallerFactory.newUnmarshaller(GitHubPullRequestList.class)) {
-            @Override
-            protected void onSuccess(final GitHubPullRequestList result) {
-                final List<PullRequest> pullRequests = new ArrayList<>();
-                for (final GitHubPullRequest oneGitHubPullRequest : result.getPullRequests()) {
-                    pullRequests.add(valueOf(oneGitHubPullRequest));
-                }
-                callback.onSuccess(pullRequests);
-            }
-
-            @Override
-            protected void onFailure(final Throwable exception) {
-                callback.onFailure(exception);
-            }
-        });
+        gitHubClientService.getPullRequests(owner, repository)
+                           .then(result -> {
+                               final List<PullRequest> pullRequests = new ArrayList<>();
+                               for (final GitHubPullRequest oneGitHubPullRequest : result.getPullRequests()) {
+                                   pullRequests.add(valueOf(oneGitHubPullRequest));
+                               }
+                               callback.onSuccess(pullRequests);
+                           })
+                           .catchError(error -> {
+                               callback.onFailure(error.getCause());
+                           });
     }
 
     /**
@@ -367,23 +365,17 @@ public class GitHubHostingService implements VcsHostingService {
     private void getForks(@NotNull final String owner,
                           @NotNull final String repository,
                           @NotNull final AsyncCallback<List<Repository>> callback) {
-
-        gitHubClientService.getForks(owner, repository, new AsyncRequestCallback<GitHubRepositoryList>(
-                dtoUnmarshallerFactory.newUnmarshaller(GitHubRepositoryList.class)) {
-            @Override
-            protected void onSuccess(final GitHubRepositoryList gitHubRepositoryList) {
-                final List<Repository> repositories = new ArrayList<>();
-                for (final GitHubRepository oneGitHubRepository : gitHubRepositoryList.getRepositories()) {
-                    repositories.add(valueOf(oneGitHubRepository));
-                }
-                callback.onSuccess(repositories);
-            }
-
-            @Override
-            protected void onFailure(final Throwable exception) {
-                callback.onFailure(exception);
-            }
-        });
+        gitHubClientService.getForks(owner, repository)
+                           .then(gitHubRepositoryList -> {
+                               final List<Repository> repositories = new ArrayList<>();
+                               for (final GitHubRepository oneGitHubRepository : gitHubRepositoryList.getRepositories()) {
+                                   repositories.add(valueOf(oneGitHubRepository));
+                               }
+                               callback.onSuccess(repositories);
+                           })
+                           .catchError(error -> {
+                               callback.onFailure(error.getCause());
+                           });
     }
 
     private Promise<List<Repository>> getForks(final String owner, final String repository) {
