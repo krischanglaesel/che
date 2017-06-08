@@ -115,7 +115,6 @@ func NewChannel(conn NativeConn, handler RequestHandler) *Channel {
 		stop:                 make(chan bool, 1),
 		ticker:               time.NewTicker(DefaultWatchQueuePeriod),
 	}
-
 	channel := &Channel{
 		ID:          "channel-" + strconv.Itoa(int(atomic.AddUint64(&prevChanID, 1))),
 		Created:     time.Now(),
@@ -124,9 +123,7 @@ func NewChannel(conn NativeConn, handler RequestHandler) *Channel {
 		reqHandler:  handler,
 		rq:          rq,
 	}
-
 	channel.closer = &closer{channel: channel}
-
 	return channel
 }
 
@@ -211,7 +208,6 @@ func (c *Channel) mainWriteLoop() {
 		if bytes, err := json.Marshal(message); err != nil {
 			log.Printf("Couldn't marshal message: %T, %v to json. Error %s", message, message, err.Error())
 		} else {
-			log.Println("SENDING :", string(bytes))
 			if err := c.Conn.Write(bytes); err != nil {
 				log.Printf("Couldn't write message to the channel. Message: %T, %v", message, message)
 			}
@@ -221,9 +217,7 @@ func (c *Channel) mainWriteLoop() {
 
 func (c *Channel) mainReadLoop() {
 	for {
-		log.Println("reading")
 		binMessage, err := c.Conn.Next()
-		log.Println("read")
 		if err == nil {
 			c.dispatchMessage(binMessage)
 		} else {
@@ -258,8 +252,6 @@ func (c *Channel) dispatchResponse(r *Response) {
 }
 
 func (c *Channel) dispatchMessage(binMessage []byte) {
-	log.Println("Unmarshalling", string(binMessage))
-
 	draft := &draft{}
 	err := json.Unmarshal(binMessage, draft)
 

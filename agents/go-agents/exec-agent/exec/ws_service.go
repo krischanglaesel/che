@@ -301,7 +301,7 @@ type GetProcessesParams struct {
 }
 
 func jsonrpcGetProcesses(body interface{}, t jsonrpc.ResponseTransmitter) {
-	params := body.(GetProcessesParams)
+	params := body.(*GetProcessesParams)
 	t.Send(process.GetProcesses(params.All))
 }
 

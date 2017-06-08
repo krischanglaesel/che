@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-// TODO add timeouts to all the wait calls
 // TODO close reqRecorder in places where not closed
 
 func TestChannelSaysHello(t *testing.T) {
@@ -282,9 +281,11 @@ type testStruct struct {
 	Data string `json:"data"`
 }
 
-func newTestChannel() (*jsonrpc.Channel, *jsonrpctest.ConnRecorder, *jsonrpctest.RequestsRecorder) {
+func newTestChannel() (*jsonrpc.Channel, *jsonrpctest.ConnRecorder, *jsonrpctest.ReqRecorder) {
 	connRecorder := jsonrpctest.NewConnRecorder()
 	reqRecorder := jsonrpctest.NewReqRecorder()
 	channel := jsonrpc.NewChannel(connRecorder, reqRecorder)
+	connRecorder.CloseAfter(2 * time.Second)
+	reqRecorder.CloseAfter(2 * time.Second)
 	return channel, connRecorder, reqRecorder
 }

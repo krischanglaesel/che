@@ -3,11 +3,14 @@ package jsonrpctest
 import (
 	"encoding/json"
 	"errors"
-	"github.com/eclipse/che/agents/go-agents/core/jsonrpc"
 	"sync"
+
+	"time"
+
+	"github.com/eclipse/che/agents/go-agents/core/jsonrpc"
 )
 
-// ConnRecorder is a fake connection which records or writes
+// ConnRecorder is a fake connection which records all writes
 // and provides functionality to push reads.
 type ConnRecorder struct {
 	mutex          *sync.Mutex
@@ -57,11 +60,13 @@ func ReqSent(method string) NativeConnWaitPredicate {
 	}
 }
 
-func (recorder *ConnRecorder) GetCaptured(idx int) []byte {
+// Get returns bytes which were wrote (idx+1)th to this connection.
+func (recorder *ConnRecorder) Get(idx int) []byte {
 	return recorder.capturedWrites[idx]
 }
 
-func (recorder *ConnRecorder) GetAllCaptured() [][]byte {
+// GetAll returns all captured writes.
+func (recorder *ConnRecorder) GetAll() [][]byte {
 	recorder.mutex.Lock()
 	defer recorder.mutex.Unlock()
 	cp := make([][]byte, len(recorder.capturedWrites))
@@ -69,20 +74,47 @@ func (recorder *ConnRecorder) GetAllCaptured() [][]byte {
 	return cp
 }
 
-func (recorder *ConnRecorder) Unmarshal(idx int, v interface{}) error {
-	return json.Unmarshal(recorder.GetCaptured(idx), v)
+// CloseAfter closes this request after specified timeout.
+func (recorder *ConnRecorder) CloseAfter(dur time.Duration) {
+	go func() {
+		<-time.NewTimer(dur).C
+		recorder.Close()
+	}()
 }
 
+// Unmarshal parses bytes wrote (idx+1)th and applies it on given value.
+func (recorder *ConnRecorder) Unmarshal(idx int, v interface{}) error {
+	return json.Unmarshal(recorder.Get(idx), v)
+}
+
+// GetRequest gets bytes wrote (idx+1)th and unmarshals them as *jsonrpc.Request.
 func (recorder *ConnRecorder) GetRequest(idx int) (*jsonrpc.Request, error) {
 	req := &jsonrpc.Request{}
 	err := recorder.Unmarshal(idx, req)
 	return req, err
 }
 
-func (recorder *ConnRecorder) GetAllRequest() {
-
+// GetAllRequests goes through all captured data tries to unmarshal it
+// to the requests and then returns the result.
+// Result will contains only those requests which method is different from "".
+func (recorder *ConnRecorder) GetAllRequests() ([]*jsonrpc.Request, error) {
+	recorder.mutex.Lock()
+	defer recorder.mutex.Unlock()
+	res := make([]*jsonrpc.Request, 0)
+	for _, v := range recorder.capturedWrites {
+		req := &jsonrpc.Request{}
+		err := json.Unmarshal(v, req)
+		if err != nil {
+			return nil, err
+		}
+		if req.Method != "" {
+			res = append(res, req)
+		}
+	}
+	return res, nil
 }
 
+// GetResponse gets bytes wrote (idx+1)th and unmarshals them as *jsonrpc.Response.
 func (recorder *ConnRecorder) GetResponse(idx int) (*jsonrpc.Response, error) {
 	resp := &jsonrpc.Response{}
 	err := recorder.Unmarshal(idx, resp)
@@ -92,24 +124,32 @@ func (recorder *ConnRecorder) GetResponse(idx int) (*jsonrpc.Response, error) {
 	return resp, err
 }
 
+// UnmarshalResponseResult unmarshals response.Result wrote (idx+1)th to a given value.
+func (recorder *ConnRecorder) UnmarshalResponseResult(idx int, v interface{}) error {
+	resp, err := recorder.GetResponse(idx)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(resp.Result, v)
+}
+
+// UnmarshalRequestParams unmarshals request.RawParams wrote (idx+1)th to a given value.
 func (recorder *ConnRecorder) UnmarshalRequestParams(idx int, v interface{}) error {
 	req, err := recorder.GetRequest(idx)
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(req.RawParams, &v)
-	if err != nil {
-		return err
-	}
-	return nil
+	return json.Unmarshal(req.RawParams, &v)
 }
 
+// WaitUntil waits until either recorder is closed or predicate returned true,
+// if closed before predicate condition is met, error is returned.
 func (recorder *ConnRecorder) WaitUntil(p NativeConnWaitPredicate) error {
 	recorder.cond.L.Lock()
 	for {
 		if recorder.closed {
 			recorder.cond.L.Unlock()
-			return errors.New("01")
+			return errors.New("Closed before condition met")
 		}
 		if p(recorder) {
 			recorder.cond.L.Unlock()
@@ -121,6 +161,14 @@ func (recorder *ConnRecorder) WaitUntil(p NativeConnWaitPredicate) error {
 	return nil
 }
 
+// PushNextRaw pushes marshaled
+// data to the read channel, so if Next() is called the data is returned.
+func (recorder *ConnRecorder) PushNextRaw(data []byte) {
+	recorder.nextChan <- data
+}
+
+// PushNext marshals a given value to json and
+// pushes marshaled data to the read channel as PushNextRaw func does.
 func (recorder *ConnRecorder) PushNext(v interface{}) error {
 	marshaled, err := json.Marshal(v)
 	if err != nil {
@@ -130,10 +178,8 @@ func (recorder *ConnRecorder) PushNext(v interface{}) error {
 	return nil
 }
 
-func (recorder *ConnRecorder) PushNextRaw(data []byte) {
-	recorder.nextChan <- data
-}
-
+// PushNextRaw pushes marshaled
+// data to the read channel, so if Next() is called the data is returned.
 func (recorder *ConnRecorder) PushNextReq(method string, params interface{}) error {
 	marshaledParams, err := json.Marshal(params)
 	if err != nil {
@@ -146,6 +192,7 @@ func (recorder *ConnRecorder) PushNextReq(method string, params interface{}) err
 	})
 }
 
+// Write captures given bytes.
 func (recorder *ConnRecorder) Write(body []byte) error {
 	recorder.mutex.Lock()
 	recorder.capturedWrites = append(recorder.capturedWrites, body)
@@ -154,6 +201,7 @@ func (recorder *ConnRecorder) Write(body []byte) error {
 	return nil
 }
 
+// Next returns bytes pushed by one of Push* functions.
 func (recorder *ConnRecorder) Next() ([]byte, error) {
 	data, ok := <-recorder.nextChan
 	if !ok {
@@ -162,11 +210,14 @@ func (recorder *ConnRecorder) Next() ([]byte, error) {
 	return data, nil
 }
 
+// Close closes this recorder, so all the waiters wake up and receive an error.
 func (recorder *ConnRecorder) Close() error {
 	recorder.mutex.Lock()
-	recorder.closed = true
-	recorder.cond.Broadcast()
-	recorder.mutex.Unlock()
-	close(recorder.nextChan)
+	defer recorder.mutex.Unlock()
+	if !recorder.closed {
+		recorder.closed = true
+		recorder.cond.Broadcast()
+		close(recorder.nextChan)
+	}
 	return nil
 }

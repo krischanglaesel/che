@@ -1,9 +1,14 @@
-// Package RPC provides full implementation of JSONRPC 2.0 protocol.
+// Package RPC provides lightweight implementation of JSONRPC 2.0 protocol.
 // See http://www.jsonrpc.org/specification.
 //
-// The implementation specific terminology:
+// - the implementation does not support 'Batch' operations.
+// - the implementation supports 2.0 version only.
+// - the implementation uses 2.0 version for those requests that do not specify the version.
 //
-//   Transfer channel - a transport layer for two endpoints
+//
+// The terminology use across documentation:
+//
+//   Channel - a transport layer between two endpoints
 //   for bidirectional communication.
 //
 //   Server - the endpoint of the transfer channel which receives
@@ -18,6 +23,8 @@ import (
 	"encoding/json"
 	"fmt"
 )
+
+// TODO Result -> RawResult
 
 const (
 	// ParseErrorCode indicates that invalid JSON was received by the server.
