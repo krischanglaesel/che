@@ -62,7 +62,7 @@ func main() {
 	appHTTPRoutes := []rest.RoutesGroup{
 		exec.HTTPRoutes,
 		{
-			Name: "JSON-RPC WebSocket Channel Routes",
+			Name: "Exec-Agent WebSocket routes",
 			Items: []rest.Route{
 				{
 					Method: "GET",
@@ -73,9 +73,9 @@ func main() {
 						if err != nil {
 							return err
 						}
-						channel := jsonrpc.NewManagedChannel(conn)
-						channel.Go()
-						channel.SayHello()
+						tunnel := jsonrpc.NewManagedTunnel(conn)
+						tunnel.Go()
+						tunnel.SayHello()
 						return nil
 					},
 				},
@@ -117,13 +117,13 @@ func getHandler(h http.Handler) http.Handler {
 
 func droppingRPCChannelsUnauthorizedHandler(w http.ResponseWriter, req *http.Request, err error) {
 	token := req.URL.Query().Get("token")
-	for _, c := range jsonrpc.GetChannels() {
-		if wsChan, ok := c.Conn.(*jsonrpcws.NativeConnAdapter); ok {
+	for _, tun := range jsonrpc.GetTunnels() {
+		if wsChan, ok := tun.Conn().(*jsonrpcws.NativeConnAdapter); ok {
 			if u, err1 := url.ParseRequestURI(wsChan.RequestURI); err1 != nil {
-				log.Printf("Couldn't parse the RequestURI '%s' of channel '%s'", wsChan.RequestURI, c.ID)
+				log.Printf("Couldn't parse the RequestURI '%s' of channel '%s'", wsChan.RequestURI, tun.ID())
 			} else if u.Query().Get("token") == token {
-				log.Printf("Token for channel '%s' is expired, trying to drop the channel", c.ID)
-				if dropped, ok := jsonrpc.Rm(c.ID); ok {
+				log.Printf("Token for channel '%s' is expired, trying to drop the channel", tun.ID())
+				if dropped, ok := jsonrpc.Rm(tun.ID()); ok {
 					dropped.Close()
 				}
 			}

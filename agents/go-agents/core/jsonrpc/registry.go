@@ -2,58 +2,73 @@ package jsonrpc
 
 import "sync"
 
-var DefaultRegistry = &ChannelRegistry{channels: make(map[string]Channel)}
+// DefaultRegistry is package registry, which is used by NewManagedTunnel.
+var DefaultRegistry = NewRegistry()
 
-func Save(channel Channel) {
-	DefaultRegistry.Save(channel)
+// Save saves a given tunnel is the default registry.
+func Save(tun *Tunnel) {
+	DefaultRegistry.Save(tun)
 }
 
-func Rm(id string) (Channel, bool) {
+// Rm removes a given tunnel from the default registry.
+func Rm(id string) (*Tunnel, bool) {
 	return DefaultRegistry.Rm(id)
 }
 
-func GetChannels() []Channel {
-	return DefaultRegistry.GetChannels()
+// GetTunnels gets tunnels managed by default registry.
+func GetTunnels() []*Tunnel {
+	return DefaultRegistry.GetTunnels()
 }
 
-func Get(id string) (Channel, bool) {
+// Get gets a single tunnel managed by default registry.
+func Get(id string) (*Tunnel, bool) {
 	return DefaultRegistry.Get(id)
 }
 
-type ChannelRegistry struct {
+// TunnelRegistry is a simple storage for tunnels.
+type TunnelRegistry struct {
 	sync.RWMutex
-	channels map[string]Channel
+	tuns map[string]*Tunnel
 }
 
-func (cm *ChannelRegistry) Save(channel Channel) {
-	cm.Lock()
-	defer cm.Unlock()
-	cm.channels[channel.ID] = channel
+// NewRegistry creates a new registry.
+func NewRegistry() *TunnelRegistry {
+	return &TunnelRegistry{tuns: make(map[string]*Tunnel)}
 }
 
-func (cm *ChannelRegistry) Rm(id string) (Channel, bool) {
+// Save saves a tunnel with a given id in this registry, overrides existing one.
+func (cm *TunnelRegistry) Save(tun *Tunnel) {
 	cm.Lock()
 	defer cm.Unlock()
-	channel, ok := cm.channels[id]
+	cm.tuns[tun.id] = tun
+}
+
+// Rm removes tunnel with given id from the registry.
+func (cm *TunnelRegistry) Rm(id string) (*Tunnel, bool) {
+	cm.Lock()
+	defer cm.Unlock()
+	tun, ok := cm.tuns[id]
 	if ok {
-		delete(cm.channels, id)
+		delete(cm.tuns, id)
 	}
-	return channel, ok
+	return tun, ok
 }
 
-func (cm *ChannelRegistry) GetChannels() []Channel {
+// GetTunnels returns all the tunnels which the registry keeps.
+func (cm *TunnelRegistry) GetTunnels() []*Tunnel {
 	cm.RLock()
 	defer cm.RUnlock()
-	channels := make([]Channel, 0)
-	for _, v := range cm.channels {
-		channels = append(channels, v)
+	tuns := make([]*Tunnel, 0)
+	for _, v := range cm.tuns {
+		tuns = append(tuns, v)
 	}
-	return channels
+	return tuns
 }
 
-func (cm *ChannelRegistry) Get(id string) (Channel, bool) {
+// Get returns tunnel with a given id.
+func (cm *TunnelRegistry) Get(id string) (*Tunnel, bool) {
 	cm.Lock()
 	defer cm.Unlock()
-	channel, ok := cm.channels[id]
-	return channel, ok
+	tun, ok := cm.tuns[id]
+	return tun, ok
 }

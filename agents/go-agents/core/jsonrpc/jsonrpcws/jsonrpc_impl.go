@@ -1,4 +1,4 @@
-// Package provides implementation of jsonrpc.NativeConn based on websocket.
+// Package jsonrpcws provides implementation of jsonrpc.NativeConn based on websocket.
 //
 // The example:
 //
@@ -7,7 +7,7 @@
 //	if err != nil {
 //      	panic(err)
 //      }
-// 	channel := jsonrpc.NewChannel(conn, jsonrpc.DefaultRouter)
+// 	channel := jsonrpc.NewTunnel(conn, jsonrpc.DefaultRouter)
 //	channel.Go()
 //	channel.SayHello()
 //
@@ -16,7 +16,7 @@
 //	if err != nil {
 //      	panic(err)
 //      }
-//	channel := jsonrpc.NewChannel(conn, jsonrpc.DefaultRouter)
+//	channel := jsonrpc.NewTunnel(conn, jsonrpc.DefaultRouter)
 //	channel.Go()
 //	channel.SayHello()
 package jsonrpcws
@@ -38,6 +38,7 @@ var (
 	}
 )
 
+// NewDial establishes a new client WebSocket connection.
 func NewDial(url string) (*NativeConnAdapter, error) {
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
@@ -46,6 +47,7 @@ func NewDial(url string) (*NativeConnAdapter, error) {
 	return &NativeConnAdapter{conn: conn}, nil
 }
 
+// Upgrade upgrades http connection to WebSocket connection.
 func Upgrade(w http.ResponseWriter, r *http.Request) (*NativeConnAdapter, error) {
 	conn, err := defaultUpgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -54,16 +56,22 @@ func Upgrade(w http.ResponseWriter, r *http.Request) (*NativeConnAdapter, error)
 	return &NativeConnAdapter{RequestURI: r.RequestURI, conn: conn}, nil
 }
 
+// NativeConnAdapter adapts WebSocket connection to jsonrpc.NativeConn.
 type NativeConnAdapter struct {
+
+	// RequestURI is http.Request URI which is set on connection Upgrade.
 	RequestURI string
-	conn       *websocket.Conn
+
+	// A real websocket connection.
+	conn *websocket.Conn
 }
 
-// jsonrpc.NativeConn implementation
+// Write writes text message to the WebSocket connection.
 func (adapter *NativeConnAdapter) Write(data []byte) error {
 	return adapter.conn.WriteMessage(websocket.TextMessage, data)
 }
 
+// Next reads next text message from the WebSocket connection.
 func (adapter *NativeConnAdapter) Next() ([]byte, error) {
 	for {
 		mType, data, err := adapter.conn.ReadMessage()
@@ -79,13 +87,13 @@ func (adapter *NativeConnAdapter) Next() ([]byte, error) {
 	}
 }
 
+// Close closes this connection.
 func (adapter *NativeConnAdapter) Close() error {
 	err := adapter.conn.Close()
 	if closeErr, ok := err.(*websocket.CloseError); ok && isNormallyClosed(closeErr.Code) {
 		return nil
-	} else {
-		return err
 	}
+	return err
 }
 
 func isNormallyClosed(code int) bool {

@@ -71,9 +71,9 @@ func checkCommand(command *process.Command) error {
 }
 
 type rpcProcessEventConsumer struct {
-	channel jsonrpc.Channel
+	tunnel *jsonrpc.Tunnel
 }
 
 func (rpcConsumer *rpcProcessEventConsumer) Accept(e process.Event) {
-	rpcConsumer.channel.Notify(e.Type(), e)
+	rpcConsumer.tunnel.Notify(e.Type(), e)
 }

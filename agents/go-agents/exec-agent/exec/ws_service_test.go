@@ -171,10 +171,10 @@ func TestJSONRPCGetProcessLogs(t *testing.T) {
 	}
 }
 
-func startTestChannel() (*jsonrpc.Channel, *jsonrpctest.ConnRecorder) {
+func startTestChannel() (*jsonrpc.Tunnel, *jsonrpctest.ConnRecorder) {
 	jsonrpc.RegRoutesGroup(RPCRoutes)
 	connRecorder := jsonrpctest.NewConnRecorder()
-	channel := jsonrpc.NewChannel(connRecorder, jsonrpc.DefaultRouter)
+	channel := jsonrpc.NewTunnel(connRecorder, jsonrpc.DefaultRouter)
 	connRecorder.CloseAfter(2 * time.Second)
 	channel.Go()
 	return channel, connRecorder
@@ -193,7 +193,7 @@ func jsonrpcStartAndWaitProcess(t *testing.T, recorder *jsonrpctest.ConnRecorder
 	// the last request must be died event
 	dieReq := requests[len(requests)-1]
 	deadProcess := process.MachineProcess{}
-	if err := json.Unmarshal(dieReq.RawParams, &deadProcess); err != nil {
+	if err := json.Unmarshal(dieReq.Params, &deadProcess); err != nil {
 		t.Fatal(err)
 	}
 

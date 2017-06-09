@@ -54,9 +54,8 @@ func ReqSent(method string) NativeConnWaitPredicate {
 		req := &jsonrpc.Request{}
 		if err := json.Unmarshal(last, req); err != nil {
 			return false
-		} else {
-			return method == req.Method
 		}
+		return method == req.Method
 	}
 }
 
@@ -118,8 +117,8 @@ func (recorder *ConnRecorder) GetAllRequests() ([]*jsonrpc.Request, error) {
 func (recorder *ConnRecorder) GetResponse(idx int) (*jsonrpc.Response, error) {
 	resp := &jsonrpc.Response{}
 	err := recorder.Unmarshal(idx, resp)
-	if floatId, ok := resp.ID.(float64); ok {
-		resp.ID = int(floatId)
+	if floatID, ok := resp.ID.(float64); ok {
+		resp.ID = int(floatID)
 	}
 	return resp, err
 }
@@ -133,13 +132,13 @@ func (recorder *ConnRecorder) UnmarshalResponseResult(idx int, v interface{}) er
 	return json.Unmarshal(resp.Result, v)
 }
 
-// UnmarshalRequestParams unmarshals request.RawParams wrote (idx+1)th to a given value.
+// UnmarshalRequestParams unmarshals request.Params wrote (idx+1)th to a given value.
 func (recorder *ConnRecorder) UnmarshalRequestParams(idx int, v interface{}) error {
 	req, err := recorder.GetRequest(idx)
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(req.RawParams, &v)
+	return json.Unmarshal(req.Params, &v)
 }
 
 // WaitUntil waits until either recorder is closed or predicate returned true,
@@ -178,17 +177,16 @@ func (recorder *ConnRecorder) PushNext(v interface{}) error {
 	return nil
 }
 
-// PushNextRaw pushes marshaled
-// data to the read channel, so if Next() is called the data is returned.
+// PushNextReq marshals a given method and params as requests and pushes it using PushNextRaw.
 func (recorder *ConnRecorder) PushNextReq(method string, params interface{}) error {
 	marshaledParams, err := json.Marshal(params)
 	if err != nil {
 		return err
 	}
 	return recorder.PushNext(&jsonrpc.Request{
-		ID:        "test",
-		Method:    method,
-		RawParams: marshaledParams,
+		ID:     "test",
+		Method: method,
+		Params: marshaledParams,
 	})
 }
 

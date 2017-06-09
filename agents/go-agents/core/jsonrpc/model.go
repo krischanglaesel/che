@@ -1,4 +1,4 @@
-// Package RPC provides lightweight implementation of JSONRPC 2.0 protocol.
+// Package jsonrpc provides lightweight implementation of JSONRPC 2.0 protocol.
 // See http://www.jsonrpc.org/specification.
 //
 // - the implementation does not support 'Batch' operations.
@@ -8,23 +8,26 @@
 //
 // The terminology use across documentation:
 //
-//   Channel - a transport layer between two endpoints
-//   for bidirectional communication.
+//   Request - the message from client to server with id.
 //
-//   Server - the endpoint of the transfer channel which receives
+//   Notification - the message from server to client without id.
+//
+//   Response - the message from server to client, reply on a request.
+//
+//   Server - the endpoint of the transfer tunnel which receives
 //   Requests or Notifications and replies with Responses.
 //
-//   Client - the endpoint of the transfer channel which receives
+//   Client - the endpoint of the transfer tunnel which receives
 //   Responses and sends Requests and Notifications.
 //
+//   Tunnel - a transport layer between two endpoints for bidirectional communication.
+//   Both endpoints are considered as Server and Client at the same time.
 package jsonrpc
 
 import (
 	"encoding/json"
 	"fmt"
 )
-
-// TODO Result -> RawResult
 
 const (
 	// ParseErrorCode indicates that invalid JSON was received by the server.
@@ -51,7 +54,7 @@ const (
 // Server MUST eventually reply on the response and include
 // the same identifier value as the request provides.
 //
-// Request without ID is Notification.
+// Request without id is Notification.
 // Server MUST NOT reply to Notification.
 type Request struct {
 
@@ -83,15 +86,15 @@ type Request struct {
 	// If id is set then the object is Request otherwise it's Notification.
 	ID interface{} `json:"id"`
 
-	// Request data, parameters which are needed for operation execution.
+	// Params parameters which are needed for operation execution.
 	// Params are either json array or json object, for json objects
 	// names of the parameters are case sensitive.
 	//
 	// The params field is optional.
-	RawParams json.RawMessage `json:"params"`
+	Params json.RawMessage `json:"params"`
 }
 
-// IsNotification tests if this request is notification(ID is not set).
+// IsNotification tests if this request is notification(id is not set).
 func (r *Request) IsNotification() bool {
 	if r.ID == nil {
 		return true
@@ -156,6 +159,7 @@ func NewError(code int, err error) *Error {
 	}
 }
 
+// NewErrorf creates an error from the given code and formatted message.
 func NewErrorf(code int, format string, args ...interface{}) *Error {
 	return NewError(code, fmt.Errorf(format, args...))
 }

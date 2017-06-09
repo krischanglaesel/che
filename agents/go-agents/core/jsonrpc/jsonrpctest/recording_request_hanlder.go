@@ -8,7 +8,7 @@ import (
 	"github.com/eclipse/che/agents/go-agents/core/jsonrpc"
 )
 
-// RequestRecorder helps to catch/record jsonrpc.Channel incoming requests.
+// ReqRecorder helps to catch/record jsonrpc.Tunnel incoming requests.
 type ReqRecorder struct {
 	mutex    *sync.Mutex
 	cond     *sync.Cond
@@ -27,11 +27,11 @@ func NewReqRecorder() *ReqRecorder {
 	}
 }
 
-// NativeConnWaitPredicate is used to wait on recorder until the condition
+// ReqRecorderWaitPredicate is used to wait on recorder until the condition
 // behind this predicate is met.
 type ReqRecorderWaitPredicate func(req *ReqRecorder) bool
 
-// WriteCalledAtLeast is a predicate that allows to wait until write is called at
+// ResponseArrivedAtLeast is a predicate that allows to wait until write is called at
 // least given number of times.
 func ResponseArrivedAtLeast(times int) ReqRecorderWaitPredicate {
 	return func(recorder *ReqRecorder) bool {
@@ -66,24 +66,24 @@ func (recorder *ReqRecorder) CloseAfter(dur time.Duration) {
 	}()
 }
 
-// GetMethodHandler returns this recorder.
-func (recorder *ReqRecorder) GetMethodHandler(method string) (jsonrpc.MethodHandler, bool) {
+// FindHandler returns this recorder.
+func (recorder *ReqRecorder) FindHandler(method string) (jsonrpc.MethodHandler, bool) {
 	return recorder, true
 }
 
-// GetMethodHandler returns given params.
+// Unmarshal returns given params.
 func (recorder *ReqRecorder) Unmarshal(params []byte) (interface{}, error) {
 	return params, nil
 }
 
 // Call records a call of method handler.
-func (recorder *ReqRecorder) Call(params interface{}, rt jsonrpc.ResponseTransmitter) {
+func (recorder *ReqRecorder) Call(tun *jsonrpc.Tunnel, params interface{}, rt jsonrpc.RespTransmitter) {
 	recorder.mutex.Lock()
 	defer recorder.mutex.Unlock()
 	if byteParams, ok := params.([]byte); ok {
 		recorder.requests = append(recorder.requests, &reqPair{
 			request: &jsonrpc.Request{
-				RawParams: byteParams,
+				Params: byteParams,
 			},
 			transmitter: rt,
 		})
@@ -92,7 +92,7 @@ func (recorder *ReqRecorder) Call(params interface{}, rt jsonrpc.ResponseTransmi
 }
 
 // Get returns request + response transmitter which were caught (idx+1)th.
-func (recorder *ReqRecorder) Get(idx int) (*jsonrpc.Request, jsonrpc.ResponseTransmitter) {
+func (recorder *ReqRecorder) Get(idx int) (*jsonrpc.Request, jsonrpc.RespTransmitter) {
 	recorder.mutex.Lock()
 	defer recorder.mutex.Unlock()
 	pair := recorder.requests[idx]
@@ -112,5 +112,5 @@ func (recorder *ReqRecorder) Close() {
 
 type reqPair struct {
 	request     *jsonrpc.Request
-	transmitter jsonrpc.ResponseTransmitter
+	transmitter jsonrpc.RespTransmitter
 }

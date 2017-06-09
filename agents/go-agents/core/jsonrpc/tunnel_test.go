@@ -9,15 +9,14 @@ import (
 	"time"
 )
 
-// TODO close reqRecorder in places where not closed
-
 func TestChannelSaysHello(t *testing.T) {
 	beforeConnected := time.Now()
 
 	// initialization routine
-	channel, connRecorder, _ := newTestChannel()
+	channel, connRecorder, reqRecorder := newTestChannel()
 	channel.Go()
 	defer channel.Close()
+	defer reqRecorder.Close()
 
 	// send hello notification
 	channel.SayHello()
@@ -28,11 +27,11 @@ func TestChannelSaysHello(t *testing.T) {
 	}
 
 	// check the received notification is expected one
-	helloNotification := &jsonrpc.ChannelEvent{}
+	helloNotification := &jsonrpc.TunnelNotification{}
 	connRecorder.UnmarshalRequestParams(0, helloNotification)
 
-	if helloNotification.ChannelID != channel.ID {
-		t.Fatalf("Channel ids are different %s != %s", helloNotification.ChannelID, channel.ID)
+	if helloNotification.ChannelID != channel.ID() {
+		t.Fatalf("Tunnel ids are different %s != %s", helloNotification.ChannelID, channel.ID())
 	}
 	if helloNotification.Text != "Hello!" {
 		t.Fatalf("Expected text to be 'Hello' but it is %s", helloNotification.Text)
@@ -45,9 +44,10 @@ func TestChannelSaysHello(t *testing.T) {
 
 // X Notification -> X'
 func TestSendingNotification(t *testing.T) {
-	channel, connRecorder, _ := newTestChannel()
+	channel, connRecorder, reqRecorder := newTestChannel()
 	channel.Go()
 	defer channel.Close()
+	defer reqRecorder.Close()
 
 	method := "event:my-event"
 	channel.Notify(method, &testStruct{"Test"})
@@ -70,7 +70,7 @@ func TestSendingNotification(t *testing.T) {
 
 	// check params
 	event := &testStruct{}
-	json.Unmarshal(req.RawParams, event)
+	json.Unmarshal(req.Params, event)
 	if event.Data != "Test" {
 		t.Fatal("Expected event data to be 'Test'")
 	}
@@ -105,7 +105,7 @@ func TestSendingRequest(t *testing.T) {
 
 	// check params
 	event := &testStruct{}
-	json.Unmarshal(req.RawParams, event)
+	json.Unmarshal(req.Params, event)
 	if event.Data != "Test" {
 		t.Fatal("Expected event data to be 'Test'")
 	}
@@ -124,9 +124,9 @@ func TestReceivingRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	sentReq := &jsonrpc.Request{
-		ID:        "1",
-		Method:    "domain.doSomething",
-		RawParams: reqBody,
+		ID:     "1",
+		Method: "domain.doSomething",
+		Params: reqBody,
 	}
 	connRecorder.PushNext(sentReq)
 
@@ -136,8 +136,8 @@ func TestReceivingRequest(t *testing.T) {
 	}
 
 	receivedReq, _ := reqRecorder.Get(0)
-	if string(receivedReq.RawParams) != string(sentReq.RawParams) {
-		t.Fatalf("Sent params %s but received %s", string(sentReq.RawParams), string(receivedReq.RawParams))
+	if string(receivedReq.Params) != string(sentReq.Params) {
+		t.Fatalf("Sent params %s but received %s", string(sentReq.Params), string(receivedReq.Params))
 	}
 }
 
@@ -155,9 +155,9 @@ func TestSendingResponseBack(t *testing.T) {
 		t.Fatal(err)
 	}
 	req := &jsonrpc.Request{
-		ID:        1,
-		Method:    "domain.doSomething",
-		RawParams: reqBody,
+		ID:     1,
+		Method: "domain.doSomething",
+		Params: reqBody,
 	}
 	connRecorder.PushNext(req)
 
@@ -281,10 +281,10 @@ type testStruct struct {
 	Data string `json:"data"`
 }
 
-func newTestChannel() (*jsonrpc.Channel, *jsonrpctest.ConnRecorder, *jsonrpctest.ReqRecorder) {
+func newTestChannel() (*jsonrpc.Tunnel, *jsonrpctest.ConnRecorder, *jsonrpctest.ReqRecorder) {
 	connRecorder := jsonrpctest.NewConnRecorder()
 	reqRecorder := jsonrpctest.NewReqRecorder()
-	channel := jsonrpc.NewChannel(connRecorder, reqRecorder)
+	channel := jsonrpc.NewTunnel(connRecorder, reqRecorder)
 	connRecorder.CloseAfter(2 * time.Second)
 	reqRecorder.CloseAfter(2 * time.Second)
 	return channel, connRecorder, reqRecorder

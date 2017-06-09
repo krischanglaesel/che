@@ -7,7 +7,7 @@ import (
 )
 
 // DefaultRouter is a default package router.
-// It might be used as channels request handler.
+// It might be used as tuns request handler.
 var DefaultRouter = NewRouter()
 
 // RegRoute registers route using package DefaultRouter.
@@ -23,7 +23,7 @@ func RegRoutesGroups(rgs []RoutesGroup) { DefaultRouter.RegisterGroups(rgs) }
 type DecodeFunc func(body []byte) (interface{}, error)
 
 // HandleFunc used to handle route request.
-type HandleFunc func(params interface{}, t ResponseTransmitter)
+type HandleFunc func(tun *Tunnel, params interface{}, t RespTransmitter)
 
 // Route defines named operation and its handler.
 type Route struct {
@@ -46,24 +46,6 @@ type Route struct {
 	Handle HandleFunc
 }
 
-// HandleNotification converts a function which receives parameters only
-// to Route.Handle function.
-func HandleNotification(f func(params interface{})) HandleFunc {
-	return func(params interface{}, t ResponseTransmitter) { f(params) }
-}
-
-// HandleBareNotification converts a function which receives nothing
-// to Route.Handle function.
-func HandleBareNotification(f func()) HandleFunc {
-	return func(params interface{}, t ResponseTransmitter) { f() }
-}
-
-// HandleBareRequest converts a function which receives nothing but transmitter
-// to Route.Handle function.
-func HandleBareRequest(f func(t ResponseTransmitter)) HandleFunc {
-	return func(params interface{}, t ResponseTransmitter) { f(t) }
-}
-
 // FactoryDec uses given function to get an instance of object
 // and then unmarshal params json into that object.
 // The result of this function can be used as Route.Decode function.
@@ -77,17 +59,11 @@ func FactoryDec(create func() interface{}) func(body []byte) (interface{}, error
 	}
 }
 
-func RetErrorHandle(f func(params interface{}, rt ResponseTransmitter) error) HandleFunc {
-	return func(params interface{}, t ResponseTransmitter) {
-		if err := f(params, t); err != nil {
-			t.SendError(asJSONRPCErr(err))
-		}
-	}
-}
-
-func RetHandle(f func(params interface{}) (interface{}, error)) HandleFunc {
-	return func(params interface{}, t ResponseTransmitter) {
-		if res, err := f(params); err == nil {
+// HRet converts handle function without transmitter to the HandleFunc.
+// Returned values will be sent with transmitter.
+func HRet(f func(tun *Tunnel, params interface{}) (interface{}, error)) HandleFunc {
+	return func(tun *Tunnel, params interface{}, t RespTransmitter) {
+		if res, err := f(tun, params); err == nil {
 			t.Send(res)
 		} else {
 			t.SendError(asJSONRPCErr(err))
@@ -95,61 +71,61 @@ func RetHandle(f func(params interface{}) (interface{}, error)) HandleFunc {
 	}
 }
 
-func asJSONRPCErr(err error) *Error {
-	if rpcerr, ok := err.(*Error); ok {
-		return rpcerr
-	} else {
-		return NewError(InternalErrorCode, err)
-	}
-}
-
+// Unmarshal unpacks raw request params using route.Decode.
 func (r Route) Unmarshal(params []byte) (interface{}, error) {
 	if r.Decode == nil {
 		return nil, nil
-	} else {
-		return r.Decode(params)
 	}
+	return r.Decode(params)
 }
 
-func (r Route) Call(params interface{}, rt ResponseTransmitter) { r.Handle(params, rt) }
+// Call handles request using Route.Handle.
+func (r Route) Call(tun *Tunnel, params interface{}, rt RespTransmitter) { r.Handle(tun, params, rt) }
 
-// RoutesGroup is named group of rpc routes
+// RoutesGroup is named group of rpc routes.
 type RoutesGroup struct {
-	// The name of this group e.g.: 'ProcessRPCRoutes'
+
+	// Name is the name of this group.
 	Name string
 
-	// Rpc routes of this group
+	// Items routes.
 	Items []Route
 }
 
+// Router is a simple request dispatcher.
 type Router struct {
 	mutex  sync.RWMutex
 	routes map[string]Route
 }
 
+// NewRouter returns a new router.
 func NewRouter() *Router {
 	return &Router{routes: make(map[string]Route)}
 }
 
+// Register registers a new route in this router.
 func (r *Router) Register(route Route) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	r.routes[route.Method] = route
 }
 
+// RegisterGroup registers a whole routes group.
 func (r *Router) RegisterGroup(group RoutesGroup) {
 	for _, route := range group.Items {
 		r.Register(route)
 	}
 }
 
+// RegisterGroups registers
 func (r *Router) RegisterGroups(groups []RoutesGroup) {
 	for _, group := range groups {
 		r.RegisterGroup(group)
 	}
 }
 
-func (r *Router) GetMethodHandler(method string) (MethodHandler, bool) {
+// FindHandler finds a route for a given method.
+func (r *Router) FindHandler(method string) (MethodHandler, bool) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 	route, ok := r.routes[method]
@@ -165,4 +141,11 @@ func PrintRoutes(rg []RoutesGroup) {
 			log.Printf("✓ %s\n", route.Method)
 		}
 	}
+}
+
+func asJSONRPCErr(err error) *Error {
+	if rpcerr, ok := err.(*Error); ok {
+		return rpcerr
+	}
+	return NewError(InternalErrorCode, err)
 }

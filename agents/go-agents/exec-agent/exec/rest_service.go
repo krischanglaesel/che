@@ -82,7 +82,7 @@ func startProcessHF(w http.ResponseWriter, r *http.Request, _ rest.Params) error
 	if channelID != "" {
 		channel, ok := jsonrpc.Get(channelID)
 		if !ok {
-			m := fmt.Sprintf("Channel with id '%s' doesn't exist. Process won't be started", channelID)
+			m := fmt.Sprintf("Tunnel with id '%s' doesn't exist. Process won't be started", channelID)
 			return rest.NotFound(errors.New(m))
 		}
 		eventsConsumer := &rpcProcessEventConsumer{channel}

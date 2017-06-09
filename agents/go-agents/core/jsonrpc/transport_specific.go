@@ -1,6 +1,6 @@
 package jsonrpc
 
-// NativeConn provides low level interface for jsonrpc.Channel
+// NativeConn provides low level interface for jsonrpc.Tunnel
 // to communicate with native connection such as websocket.
 type NativeConn interface {
 
@@ -20,7 +20,7 @@ type NativeConn interface {
 
 // CloseError is an error which MUST be
 // published by NativeConn implementations and used to determine
-// the cases when channel job should be stopped.
+// the cases when tunnel job should be stopped.
 type CloseError struct{ error }
 
 // NewCloseError creates a new close error based on a given error.

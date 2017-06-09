@@ -9,22 +9,22 @@ import (
 )
 
 func TestRespTransmitterSendsBody(t *testing.T) {
-	c := &Channel{jsonOutChan: make(chan interface{}, 1)}
+	c := &Tunnel{jsonOut: make(chan interface{}, 1)}
 	transmitter := &respTransmitter{
-		reqId:   "1",
-		channel: c,
-		once:    &sync.Once{},
-		done:    make(chan bool, 1),
+		reqID:  "1",
+		tunnel: c,
+		once:   &sync.Once{},
+		done:   make(chan bool, 1),
 	}
 
 	type body struct{ Message string }
 	sentBody := body{"transmitted response"}
 	transmitter.Send(&sentBody)
 
-	resp := waitResp(t, c.jsonOutChan)
+	resp := waitResp(t, c.jsonOut)
 
-	if resp.ID != transmitter.reqId {
-		t.Fatalf("Expected transmitter to use request id '%v' as response id but used '%v' ", transmitter.reqId, resp.ID)
+	if resp.ID != transmitter.reqID {
+		t.Fatalf("Expected transmitter to use request id '%v' as response id but used '%v' ", transmitter.reqID, resp.ID)
 	}
 	if resp.Error != nil {
 		t.Fatalf("Expected transmitter sends no error in response, but found %v", resp.Error)
@@ -42,21 +42,21 @@ func TestRespTransmitterSendsBody(t *testing.T) {
 }
 
 func TestRespTransmitterSendsError(t *testing.T) {
-	c := &Channel{jsonOutChan: make(chan interface{}, 1)}
+	c := &Tunnel{jsonOut: make(chan interface{}, 1)}
 	transmitter := &respTransmitter{
-		reqId:   "1",
-		channel: c,
-		once:    &sync.Once{},
-		done:    make(chan bool, 1),
+		reqID:  "1",
+		tunnel: c,
+		once:   &sync.Once{},
+		done:   make(chan bool, 1),
 	}
 
 	errMessage := "no!no!no!"
 	transmitter.SendError(NewArgsError(errors.New(errMessage)))
 
-	resp := waitResp(t, c.jsonOutChan)
+	resp := waitResp(t, c.jsonOut)
 
-	if resp.ID != transmitter.reqId {
-		t.Fatalf("Expected transmitter to use request id '%v' as response id but used '%v' ", transmitter.reqId, resp.ID)
+	if resp.ID != transmitter.reqID {
+		t.Fatalf("Expected transmitter to use request id '%v' as response id but used '%v' ", transmitter.reqID, resp.ID)
 	}
 	if resp.Version != DefaultVersion {
 		t.Fatalf("Expected respnonse version to be %s but found %s", DefaultVersion, resp.Version)
@@ -76,12 +76,12 @@ func TestRespTransmitterSendsError(t *testing.T) {
 }
 
 func TestTransmitterDoesNotSendBodyTwice(t *testing.T) {
-	c := &Channel{jsonOutChan: make(chan interface{}, 2)}
+	c := &Tunnel{jsonOut: make(chan interface{}, 2)}
 	transmitter := &respTransmitter{
-		reqId:   "1",
-		channel: c,
-		once:    &sync.Once{},
-		done:    make(chan bool, 1),
+		reqID:  "1",
+		tunnel: c,
+		once:   &sync.Once{},
+		done:   make(chan bool, 1),
 	}
 
 	type body struct{ Message string }
@@ -90,34 +90,34 @@ func TestTransmitterDoesNotSendBodyTwice(t *testing.T) {
 
 	// read first time
 	select {
-	case <-c.jsonOutChan:
+	case <-c.jsonOut:
 	default:
-		t.Fatal("Must send first message to the channel")
+		t.Fatal("Must send first message to the tunnel")
 	}
 
 	// must not read the second time
 	select {
-	case <-c.jsonOutChan:
-		t.Fatal("Must not send second second message to the channel")
+	case <-c.jsonOut:
+		t.Fatal("Must not send second second message to the tunnel")
 	default:
 		// ok
 	}
 }
 
 func TestTransmitterRespondsIfTimeoutIsReached(t *testing.T) {
-	c := &Channel{jsonOutChan: make(chan interface{}, 1)}
+	c := &Tunnel{jsonOut: make(chan interface{}, 1)}
 	transmitter := &respTransmitter{
-		reqId:   "1",
-		channel: c,
-		once:    &sync.Once{},
-		done:    make(chan bool, 1),
+		reqID:  "1",
+		tunnel: c,
+		once:   &sync.Once{},
+		done:   make(chan bool, 1),
 	}
 	transmitter.watch(0)
 
-	resp := waitResp(t, c.jsonOutChan)
+	resp := waitResp(t, c.jsonOut)
 
-	if resp.ID != transmitter.reqId {
-		t.Fatalf("Expected transmitter to use request id '%v' as response id but used '%v' ", transmitter.reqId, resp.ID)
+	if resp.ID != transmitter.reqID {
+		t.Fatalf("Expected transmitter to use request id '%v' as response id but used '%v' ", transmitter.reqID, resp.ID)
 	}
 	if resp.Version != DefaultVersion {
 		t.Fatalf("Expected respnonse version to be %s but found %s", DefaultVersion, resp.Version)
